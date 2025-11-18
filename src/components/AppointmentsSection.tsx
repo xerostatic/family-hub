@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { supabase, Database } from '@/lib/supabase'
 import { Plus, Trash2, MapPin, Clock, Bell, BellOff } from 'lucide-react'
 import { format } from 'date-fns'
+
+type AppointmentInsert = Database['public']['Tables']['appointments']['Insert']
 
 interface Appointment {
   id: string
@@ -51,16 +53,18 @@ export default function AppointmentsSection({ familyMembers }: { familyMembers: 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    const insertData: AppointmentInsert = {
+      title: formData.title,
+      description: formData.description || undefined,
+      family_member_id: String(formData.family_member_id),
+      appointment_date: formData.appointment_date,
+      appointment_time: formData.appointment_time,
+      location: formData.location || undefined,
+    }
+
     const { error } = await supabase
       .from('appointments')
-      .insert([{
-        title: formData.title,
-        description: formData.description || undefined,
-        family_member_id: formData.family_member_id,
-        appointment_date: formData.appointment_date,
-        appointment_time: formData.appointment_time,
-        location: formData.location || undefined,
-      }])
+      .insert([insertData])
     
     if (!error) {
       setFormData({

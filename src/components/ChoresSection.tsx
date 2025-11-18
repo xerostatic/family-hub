@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { supabase, Database } from '@/lib/supabase'
 import { Plus, Trash2, Check, Repeat } from 'lucide-react'
 import { format } from 'date-fns'
+
+type ChoreInsert = Database['public']['Tables']['chores']['Insert']
 
 interface Chore {
   id: string
@@ -48,15 +50,17 @@ export default function ChoresSection({ familyMembers }: { familyMembers: any[] 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    const insertData: ChoreInsert = {
+      title: formData.title,
+      description: formData.description || undefined,
+      assigned_to: String(formData.assigned_to),
+      due_date: formData.due_date,
+      recurrence: formData.recurrence === 'none' ? null : formData.recurrence,
+    }
+
     const { error } = await supabase
       .from('chores')
-      .insert([{
-        title: formData.title,
-        description: formData.description || undefined,
-        assigned_to: formData.assigned_to,
-        due_date: formData.due_date,
-        recurrence: formData.recurrence === 'none' ? null : formData.recurrence,
-      }])
+      .insert([insertData])
     
     if (!error) {
       setFormData({

@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { supabase, Database } from '@/lib/supabase'
 import { Plus, Trash2, Check, X } from 'lucide-react'
 import { format } from 'date-fns'
+
+type BudgetItemInsert = Database['public']['Tables']['budget_items']['Insert']
 
 interface BudgetItem {
   id: string
@@ -48,15 +50,17 @@ export default function BudgetSection({ familyMembers }: { familyMembers: any[] 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    const insertData: BudgetItemInsert = {
+      category: formData.category,
+      description: formData.description,
+      amount: parseFloat(formData.amount),
+      due_date: formData.due_date,
+      family_member_id: String(formData.family_member_id),
+    }
+
     const { error } = await supabase
       .from('budget_items')
-      .insert([{
-        category: formData.category,
-        description: formData.description,
-        amount: parseFloat(formData.amount),
-        due_date: formData.due_date,
-        family_member_id: formData.family_member_id,
-      }])
+      .insert([insertData])
     
     if (!error) {
       setFormData({
