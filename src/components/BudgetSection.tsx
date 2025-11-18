@@ -47,13 +47,13 @@ export default function BudgetSection({ familyMembers }: { familyMembers: any[] 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     const { error } = await supabase
       .from('budget_items')
       .insert([{
         ...formData,
         amount: parseFloat(formData.amount)
-      }])
+      } as any])
     
     if (!error) {
       setFormData({

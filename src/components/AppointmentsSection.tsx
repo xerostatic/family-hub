@@ -50,10 +50,10 @@ export default function AppointmentsSection({ familyMembers }: { familyMembers: 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     const { error } = await supabase
       .from('appointments')
-      .insert([formData])
+      .insert([formData as any])
     
     if (!error) {
       setFormData({

@@ -47,10 +47,10 @@ export default function ChoresSection({ familyMembers }: { familyMembers: any[] 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     const { error } = await supabase
       .from('chores')
-      .insert([formData])
+      .insert([formData as any])
     
     if (!error) {
       setFormData({

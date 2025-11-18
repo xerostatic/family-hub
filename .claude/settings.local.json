@@ -5,7 +5,10 @@
       "Bash(dir:*)",
       "Bash(cat:*)",
       "Bash(test:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nRestructure project: move files from nested family-hub directory to root\n\n- Moved all Next.js files from family-hub/family-hub to family-hub (root)\n- This fixes Vercel deployment by eliminating nested directory structure\n- Added setup-database.sql for Supabase table creation\n- Improved supabase.ts with proper environment variable validation\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git push)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
