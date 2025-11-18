@@ -60,6 +60,7 @@ export default function ChoresSection({ familyMembers }: { familyMembers: any[] 
 
     const { error } = await supabase
       .from('chores')
+      // @ts-expect-error - Supabase type inference issue with Database generic
       .insert([insertData])
     
     if (!error) {
@@ -78,6 +79,7 @@ export default function ChoresSection({ familyMembers }: { familyMembers: any[] 
   const toggleCompleted = async (id: string, completed: boolean) => {
     await supabase
       .from('chores')
+      // @ts-expect-error - Supabase type inference issue with Database generic
       .update({ completed: !completed })
       .eq('id', id)
     

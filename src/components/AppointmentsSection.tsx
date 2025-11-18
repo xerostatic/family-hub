@@ -64,6 +64,7 @@ export default function AppointmentsSection({ familyMembers }: { familyMembers: 
 
     const { error } = await supabase
       .from('appointments')
+      // @ts-expect-error - Supabase type inference issue with Database generic
       .insert([insertData])
     
     if (!error) {

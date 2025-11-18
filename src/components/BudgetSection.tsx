@@ -60,6 +60,7 @@ export default function BudgetSection({ familyMembers }: { familyMembers: any[] 
 
     const { error } = await supabase
       .from('budget_items')
+      // @ts-expect-error - Supabase type inference issue with Database generic
       .insert([insertData])
     
     if (!error) {
@@ -78,6 +79,7 @@ export default function BudgetSection({ familyMembers }: { familyMembers: any[] 
   const togglePaid = async (id: string, paid: boolean) => {
     await supabase
       .from('budget_items')
+      // @ts-expect-error - Supabase type inference issue with Database generic
       .update({ paid: !paid })
       .eq('id', id)
     
