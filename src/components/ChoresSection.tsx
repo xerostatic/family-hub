@@ -48,10 +48,15 @@ export default function ChoresSection({ familyMembers }: { familyMembers: any[] 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // @ts-ignore - Supabase type inference issue
     const { error } = await supabase
       .from('chores')
-      .insert([formData])
+      .insert([{
+        title: formData.title,
+        description: formData.description || undefined,
+        assigned_to: formData.assigned_to,
+        due_date: formData.due_date,
+        recurrence: formData.recurrence === 'none' ? null : formData.recurrence,
+      }])
     
     if (!error) {
       setFormData({

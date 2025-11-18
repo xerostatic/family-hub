@@ -48,12 +48,14 @@ export default function BudgetSection({ familyMembers }: { familyMembers: any[] 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // @ts-ignore - Supabase type inference issue
     const { error } = await supabase
       .from('budget_items')
       .insert([{
-        ...formData,
-        amount: parseFloat(formData.amount)
+        category: formData.category,
+        description: formData.description,
+        amount: parseFloat(formData.amount),
+        due_date: formData.due_date,
+        family_member_id: formData.family_member_id,
       }])
     
     if (!error) {

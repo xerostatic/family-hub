@@ -51,10 +51,16 @@ export default function AppointmentsSection({ familyMembers }: { familyMembers: 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // @ts-ignore - Supabase type inference issue
     const { error } = await supabase
       .from('appointments')
-      .insert([formData])
+      .insert([{
+        title: formData.title,
+        description: formData.description || undefined,
+        family_member_id: formData.family_member_id,
+        appointment_date: formData.appointment_date,
+        appointment_time: formData.appointment_time,
+        location: formData.location || undefined,
+      }])
     
     if (!error) {
       setFormData({
