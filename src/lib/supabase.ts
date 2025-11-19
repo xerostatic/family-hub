@@ -92,7 +92,7 @@ export type Database = {
           id: string
           title: string
           description: string
-          assigned_to: string
+          assigned_to: string | null
           completed: boolean
           due_date: string | null
           recurrence: string | null
@@ -102,7 +102,7 @@ export type Database = {
           id?: string
           title: string
           description?: string
-          assigned_to: string
+          assigned_to?: string | null
           completed?: boolean
           due_date?: string | null
           recurrence?: string | null
@@ -112,7 +112,7 @@ export type Database = {
           id?: string
           title?: string
           description?: string
-          assigned_to?: string
+          assigned_to?: string | null
           completed?: boolean
           due_date?: string | null
           recurrence?: string | null

@@ -96,3 +96,14 @@ CREATE INDEX IF NOT EXISTS idx_daily_chore_status_date ON daily_chore_status(sta
 CREATE INDEX IF NOT EXISTS idx_daily_chore_status_chore ON daily_chore_status(chore_id);
 CREATE INDEX IF NOT EXISTS idx_daily_chore_status_composite ON daily_chore_status(chore_id, status_date);
 
+-- Step 10: Make assigned_to nullable in chores table (for "Everyone" chores)
+DO $$
+BEGIN
+    -- Drop NOT NULL constraint if it exists
+    ALTER TABLE chores ALTER COLUMN assigned_to DROP NOT NULL;
+EXCEPTION
+    WHEN OTHERS THEN
+        -- If constraint doesn't exist, that's fine
+        NULL;
+END $$;
+

@@ -126,9 +126,11 @@ export default function KidsChoreView({
   const filteredChores = useMemo(() => {
     let filtered = choresWithStatus
     
-    // Filter by selected member
+    // Filter by selected member (include Everyone chores - assigned_to === null)
     if (selectedMember) {
-      filtered = filtered.filter(chore => chore.assigned_to === selectedMember)
+      filtered = filtered.filter(chore => 
+        chore.assigned_to === selectedMember || chore.assigned_to === null
+      )
     }
     
     return filtered
@@ -355,17 +357,26 @@ export default function KidsChoreView({
                 </div>
 
                 {/* Assigned To */}
-                {member && (
-                  <div className="mt-4 pt-4 border-t border-gray-200 flex items-center gap-2">
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm"
-                      style={{ backgroundColor: member.avatar_color }}
-                    >
-                      {member.name.charAt(0)}
-                    </div>
-                    <span className="text-sm text-gray-600">Assigned to {member.name}</span>
-                  </div>
-                )}
+                <div className="mt-4 pt-4 border-t border-gray-200 flex items-center gap-2">
+                  {chore.assigned_to === null ? (
+                    <>
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm bg-gradient-to-r from-purple-500 to-pink-500">
+                        👥
+                      </div>
+                      <span className="text-sm text-gray-600">Assigned to Everyone</span>
+                    </>
+                  ) : member ? (
+                    <>
+                      <div
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                        style={{ backgroundColor: member.avatar_color }}
+                      >
+                        {member.name.charAt(0)}
+                      </div>
+                      <span className="text-sm text-gray-600">Assigned to {member.name}</span>
+                    </>
+                  ) : null}
+                </div>
               </div>
             )
           })

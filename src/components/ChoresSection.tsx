@@ -17,7 +17,7 @@ export default function ChoresSection({ familyMembers }: { familyMembers: Family
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    assigned_to: familyMembers[0]?.id || '',
+    assigned_to: familyMembers[0]?.id || 'everyone',
     due_date: '',
     recurrence: 'none'
   })
@@ -28,7 +28,7 @@ export default function ChoresSection({ familyMembers }: { familyMembers: Family
 
   useEffect(() => {
     if (familyMembers.length > 0 && !formData.assigned_to) {
-      setFormData(prev => ({ ...prev, assigned_to: familyMembers[0].id }))
+      setFormData(prev => ({ ...prev, assigned_to: 'everyone' }))
     }
   }, [familyMembers])
 
@@ -52,7 +52,7 @@ export default function ChoresSection({ familyMembers }: { familyMembers: Family
     const insertData: ChoreInsert = {
       title: formData.title,
       description: formData.description || undefined,
-      assigned_to: String(formData.assigned_to),
+      assigned_to: formData.assigned_to === 'everyone' ? null : String(formData.assigned_to),
       due_date: formData.recurrence !== 'none' ? null : (formData.due_date || null),
       recurrence: formData.recurrence === 'none' ? null : formData.recurrence,
     }
@@ -71,7 +71,7 @@ export default function ChoresSection({ familyMembers }: { familyMembers: Family
     setFormData({
       title: '',
       description: '',
-      assigned_to: familyMembers[0]?.id || '',
+      assigned_to: 'everyone',
       due_date: '',
       recurrence: 'none'
     })
@@ -115,7 +115,8 @@ export default function ChoresSection({ familyMembers }: { familyMembers: Family
   // Chart data by person
   const chartData = useMemo(() => {
     const memberStats = familyMembers.map(member => {
-      const memberChores = chores.filter(c => c.assigned_to === member.id)
+      // Include chores assigned to this member OR to everyone (null)
+      const memberChores = chores.filter(c => c.assigned_to === member.id || c.assigned_to === null)
       const completed = memberChores.filter(c => c.completed).length
       const total = memberChores.length
       return {
@@ -212,6 +213,7 @@ export default function ChoresSection({ familyMembers }: { familyMembers: Family
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               >
+                <option value="everyone">Everyone</option>
                 {familyMembers.map(member => (
                   <option key={member.id} value={member.id}>{member.name}</option>
                 ))}
@@ -395,7 +397,7 @@ export default function ChoresSection({ familyMembers }: { familyMembers: Family
                       {chore.due_date ? (
                         <>Due: {format(new Date(chore.due_date), 'MMM d, yyyy')} • </>
                       ) : null}
-                      Assigned to: {member?.name}
+                      Assigned to: {chore.assigned_to === null ? 'Everyone' : (member?.name || 'Unknown')}
                     </div>
                   </div>
                 </div>
