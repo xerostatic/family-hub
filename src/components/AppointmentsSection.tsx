@@ -84,6 +84,7 @@ export default function AppointmentsSection({ familyMembers }: { familyMembers: 
   const toggleReminder = async (id: string, reminderSent: boolean) => {
     await supabase
       .from('appointments')
+      // @ts-expect-error - Supabase type inference issue with Database generic
       .update({ reminder_sent: !reminderSent })
       .eq('id', id)
     
