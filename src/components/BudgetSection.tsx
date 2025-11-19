@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { supabase, Database } from '@/lib/supabase'
-import { Plus, Trash2, Check, TrendingUp, TrendingDown, DollarSign } from 'lucide-react'
+import { Plus, Trash2, Check, TrendingUp, TrendingDown, DollarSign, Edit2, X } from 'lucide-react'
 import { format, startOfMonth, endOfMonth, eachMonthOfInterval, parseISO, addMonths } from 'date-fns'
 import { FamilyMember, BudgetItem } from '@/types'
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import DebtSnowballView from './DebtSnowballView'
+import DebtImpactAnalysis from './DebtImpactAnalysis'
+import RefinancingCalculator from './RefinancingCalculator'
 
 type BudgetItemInsert = Database['public']['Tables']['budget_items']['Insert']
 
@@ -15,7 +17,8 @@ const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'
 export default function BudgetSection({ familyMembers }: { familyMembers: FamilyMember[] }) {
   const [budgetItems, setBudgetItems] = useState<BudgetItem[]>([])
   const [showForm, setShowForm] = useState(false)
-  const [viewMode, setViewMode] = useState<'list' | 'charts' | 'projections' | 'debt'>('charts')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<'list' | 'charts' | 'projections' | 'debt' | 'debt-impact' | 'refinance'>('charts')
   const [formData, setFormData] = useState({
     category: 'Bills',
     description: '',
@@ -51,44 +54,28 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
     if (data) setBudgetItems(data)
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleEdit = (item: BudgetItem) => {
+    setEditingId(item.id)
+    setFormData({
+      category: item.category,
+      description: item.description,
+      amount: item.amount.toString(),
+      due_date: item.due_date,
+      is_income: item.is_income,
+      recurrence: item.recurrence || 'none',
+      payday_date: item.payday_date || '',
+      pay_frequency: item.pay_frequency || 'monthly',
+      is_debt: item.is_debt,
+      outstanding_balance: item.outstanding_balance ? item.outstanding_balance.toString() : '',
+      include_in_snowball: item.include_in_snowball || false,
+      interest_rate: item.interest_rate ? item.interest_rate.toString() : '',
+      payment_term_months: item.payment_term_months ? item.payment_term_months.toString() : ''
+    })
+    setShowForm(true)
+  }
 
-    const insertData: BudgetItemInsert = {
-      category: formData.category,
-      description: formData.description,
-      amount: parseFloat(formData.amount),
-      due_date: formData.due_date,
-      family_member_id: null, // No longer assigning to specific members
-      is_income: formData.is_income,
-      // For income items, use pay_frequency to determine recurrence
-      // For expenses, use the recurrence field directly
-      recurrence: formData.is_income 
-        ? (formData.pay_frequency === 'biweekly' ? 'biweekly' : 
-           formData.pay_frequency === 'monthly' ? 'monthly' : 
-           formData.pay_frequency === 'yearly' ? 'yearly' : null)
-        : (formData.recurrence === 'none' ? null : formData.recurrence),
-      payday_date: formData.is_income && formData.payday_date ? formData.payday_date : null,
-      pay_frequency: formData.is_income && formData.pay_frequency ? formData.pay_frequency : null,
-      is_debt: !formData.is_income && formData.is_debt,
-      outstanding_balance: formData.is_debt && formData.outstanding_balance ? parseFloat(formData.outstanding_balance) : null,
-      include_in_snowball: formData.is_debt && formData.include_in_snowball,
-      interest_rate: formData.is_debt && formData.interest_rate ? parseFloat(formData.interest_rate) : null,
-      payment_term_months: formData.is_debt && formData.payment_term_months ? parseInt(formData.payment_term_months) : null,
-    }
-
-    const { error } = await supabase
-      .from('budget_items')
-      // @ts-expect-error - Supabase type inference issue with Database generic
-      .insert([insertData])
-    
-    if (error) {
-      console.error('Error creating budget item:', error)
-      console.error('Error details:', JSON.stringify(error, null, 2))
-      alert(`Failed to create budget item: ${error.message || 'Unknown error'}. Make sure you've run the database migration!`)
-      return
-    }
-    
+  const resetForm = () => {
+    setEditingId(null)
     setFormData({
       category: 'Bills',
       description: '',
@@ -105,6 +92,60 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
       payment_term_months: ''
     })
     setShowForm(false)
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    const updateData = {
+      category: formData.category,
+      description: formData.description,
+      amount: parseFloat(formData.amount),
+      due_date: formData.due_date,
+      family_member_id: null,
+      is_income: formData.is_income,
+      recurrence: formData.is_income 
+        ? (formData.pay_frequency === 'biweekly' ? 'biweekly' : 
+           formData.pay_frequency === 'monthly' ? 'monthly' : 
+           formData.pay_frequency === 'yearly' ? 'yearly' : null)
+        : (formData.recurrence === 'none' ? null : formData.recurrence),
+      payday_date: formData.is_income && formData.payday_date ? formData.payday_date : null,
+      pay_frequency: formData.is_income && formData.pay_frequency ? formData.pay_frequency : null,
+      is_debt: !formData.is_income && formData.is_debt,
+      outstanding_balance: formData.is_debt && formData.outstanding_balance ? parseFloat(formData.outstanding_balance) : null,
+      include_in_snowball: formData.is_debt && formData.include_in_snowball,
+      interest_rate: formData.is_debt && formData.interest_rate ? parseFloat(formData.interest_rate) : null,
+      payment_term_months: formData.is_debt && formData.payment_term_months ? parseInt(formData.payment_term_months) : null,
+    }
+
+    if (editingId) {
+      // Update existing item
+      const { error } = await supabase
+        .from('budget_items')
+        // @ts-expect-error - Supabase type inference issue
+        .update(updateData)
+        .eq('id', editingId)
+      
+      if (error) {
+        console.error('Error updating budget item:', error)
+        alert('Failed to update budget item. Please try again.')
+        return
+      }
+    } else {
+      // Create new item
+      const { error } = await supabase
+        .from('budget_items')
+        // @ts-expect-error - Supabase type inference issue
+        .insert([updateData])
+      
+      if (error) {
+        console.error('Error creating budget item:', error)
+        alert(`Failed to create budget item: ${error.message || 'Unknown error'}. Make sure you've run the database migration!`)
+        return
+      }
+    }
+    
+    resetForm()
     loadBudgetItems()
   }
 
@@ -311,9 +352,28 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
             >
               Debt Snowball
             </button>
+            <button
+              onClick={() => setViewMode('debt-impact')}
+              className={`px-3 py-1 rounded text-sm transition-colors ${
+                viewMode === 'debt-impact' ? 'bg-orange-500 text-white' : 'text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              Debt Impact
+            </button>
+            <button
+              onClick={() => setViewMode('refinance')}
+              className={`px-3 py-1 rounded text-sm transition-colors ${
+                viewMode === 'refinance' ? 'bg-purple-500 text-white' : 'text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              Refinance
+            </button>
           </div>
           <button
-            onClick={() => setShowForm(!showForm)}
+            onClick={() => {
+              resetForm()
+              setShowForm(true)
+            }}
             className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
           >
             <Plus className="w-4 h-4" />
@@ -579,11 +639,11 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
               type="submit"
               className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
             >
-              Add Item
+              {editingId ? 'Update Item' : 'Add Item'}
             </button>
             <button
               type="button"
-              onClick={() => setShowForm(false)}
+              onClick={resetForm}
               className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
             >
               Cancel
@@ -754,12 +814,22 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
                               +${parseFloat(item.amount.toString()).toFixed(2)}
                             </div>
                           </div>
-                          <button
-                            onClick={() => deleteItem(item.id)}
-                            className="ml-4 text-red-500 hover:text-red-700 transition-colors"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleEdit(item)}
+                              className="text-blue-500 hover:text-blue-700 transition-colors"
+                              title="Edit item"
+                            >
+                              <Edit2 className="w-5 h-5" />
+                            </button>
+                            <button
+                              onClick={() => deleteItem(item.id)}
+                              className="text-red-500 hover:text-red-700 transition-colors"
+                              title="Delete item"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </div>
                         </div>
                       )
                     })}
@@ -863,12 +933,22 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
                               )}
                             </div>
                           </div>
-                          <button
-                            onClick={() => deleteItem(item.id)}
-                            className="ml-4 text-red-500 hover:text-red-700 transition-colors"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleEdit(item)}
+                              className="text-blue-500 hover:text-blue-700 transition-colors"
+                              title="Edit item"
+                            >
+                              <Edit2 className="w-5 h-5" />
+                            </button>
+                            <button
+                              onClick={() => deleteItem(item.id)}
+                              className="text-red-500 hover:text-red-700 transition-colors"
+                              title="Delete item"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </div>
                         </div>
                       )
                     })}
