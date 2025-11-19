@@ -163,6 +163,29 @@ export type Database = {
           created_at?: string
         }
       }
+      daily_chore_status: {
+        Row: {
+          id: string
+          chore_id: string
+          status_date: string
+          status: 'not_started' | 'in_progress' | 'completed'
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          chore_id: string
+          status_date: string
+          status: 'not_started' | 'in_progress' | 'completed'
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          chore_id?: string
+          status_date?: string
+          status?: 'not_started' | 'in_progress' | 'completed'
+          updated_at?: string
+        }
+      }
     }
   }
 }

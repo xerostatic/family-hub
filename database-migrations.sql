@@ -81,3 +81,18 @@ EXCEPTION
         NULL;
 END $$;
 
+-- Step 9: Create daily_chore_status table for tracking daily chore completion
+CREATE TABLE IF NOT EXISTS daily_chore_status (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    chore_id UUID REFERENCES chores(id) ON DELETE CASCADE,
+    status_date DATE NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('not_started', 'in_progress', 'completed')),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(chore_id, status_date)
+);
+
+-- Create index for efficient daily queries
+CREATE INDEX IF NOT EXISTS idx_daily_chore_status_date ON daily_chore_status(status_date);
+CREATE INDEX IF NOT EXISTS idx_daily_chore_status_chore ON daily_chore_status(chore_id);
+CREATE INDEX IF NOT EXISTS idx_daily_chore_status_composite ON daily_chore_status(chore_id, status_date);
+

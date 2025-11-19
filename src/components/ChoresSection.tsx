@@ -2,17 +2,18 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { supabase, Database } from '@/lib/supabase'
-import { Plus, Trash2, Check, Repeat, BarChart3 } from 'lucide-react'
+import { Plus, Trash2, Check, Repeat, BarChart3, Sparkles } from 'lucide-react'
 import { format } from 'date-fns'
 import { FamilyMember, Chore } from '@/types'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
+import KidsChoreView from './KidsChoreView'
 
 type ChoreInsert = Database['public']['Tables']['chores']['Insert']
 
 export default function ChoresSection({ familyMembers }: { familyMembers: FamilyMember[] }) {
   const [chores, setChores] = useState<Chore[]>([])
   const [showForm, setShowForm] = useState(false)
-  const [viewMode, setViewMode] = useState<'list' | 'chart'>('list')
+  const [viewMode, setViewMode] = useState<'list' | 'chart' | 'kids'>('list')
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -156,6 +157,15 @@ export default function ChoresSection({ familyMembers }: { familyMembers: Family
               <BarChart3 className="w-4 h-4 inline mr-1" />
               Chart
             </button>
+            <button
+              onClick={() => setViewMode('kids')}
+              className={`px-3 py-1 rounded text-sm transition-colors ${
+                viewMode === 'kids' ? 'bg-purple-500 text-white' : 'text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              <Sparkles className="w-4 h-4 inline mr-1" />
+              Kids View
+            </button>
           </div>
           <button
             onClick={() => setShowForm(!showForm)}
@@ -180,7 +190,7 @@ export default function ChoresSection({ familyMembers }: { familyMembers: Family
       )}
 
       {/* Add Chore Form */}
-      {showForm && (
+      {showForm && viewMode !== 'kids' && (
         <form onSubmit={handleSubmit} className="bg-gray-50 p-4 rounded-lg mb-6 border border-gray-200">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -320,6 +330,11 @@ export default function ChoresSection({ familyMembers }: { familyMembers: Family
             </div>
           </div>
         </div>
+      )}
+
+      {/* Kids View */}
+      {viewMode === 'kids' && (
+        <KidsChoreView familyMembers={familyMembers} />
       )}
 
       {/* Chores List */}
