@@ -50,3 +50,23 @@ ADD COLUMN IF NOT EXISTS phone_number TEXT,
 ADD COLUMN IF NOT EXISTS sms_days_before INTEGER DEFAULT 1,
 ADD COLUMN IF NOT EXISTS sms_enabled BOOLEAN DEFAULT FALSE;
 
+-- Step 7: Make email optional in family_members table
+DO $$
+BEGIN
+    -- Drop NOT NULL constraint if it exists
+    ALTER TABLE family_members ALTER COLUMN email DROP NOT NULL;
+    
+    -- Drop UNIQUE constraint if it exists (since we're making it nullable)
+    IF EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE table_name = 'family_members' 
+        AND constraint_name LIKE '%email%unique%'
+    ) THEN
+        ALTER TABLE family_members DROP CONSTRAINT IF EXISTS family_members_email_key;
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        -- If constraint doesn't exist, that's fine
+        NULL;
+END $$;
+

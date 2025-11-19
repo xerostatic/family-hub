@@ -48,7 +48,7 @@ export default function FamilyEditor({ onUpdate }: { onUpdate?: () => void }) {
       // Update existing member
       const updateData: FamilyMemberUpdate = {
         name: formData.name,
-        email: formData.email,
+        email: formData.email || null,
         avatar_color: formData.avatar_color
       }
 
@@ -67,7 +67,7 @@ export default function FamilyEditor({ onUpdate }: { onUpdate?: () => void }) {
       // Create new member
       const insertData: FamilyMemberInsert = {
         name: formData.name,
-        email: formData.email,
+        email: formData.email || null,
         avatar_color: formData.avatar_color
       }
 
@@ -92,7 +92,7 @@ export default function FamilyEditor({ onUpdate }: { onUpdate?: () => void }) {
     setEditingId(member.id)
     setFormData({
       name: member.name,
-      email: member.email,
+      email: member.email || '',
       avatar_color: member.avatar_color
     })
     setShowForm(true)
@@ -165,14 +165,13 @@ export default function FamilyEditor({ onUpdate }: { onUpdate?: () => void }) {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email (Optional)</label>
               <input
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="john@example.com"
-                required
               />
             </div>
             <div className="md:col-span-2">
@@ -235,7 +234,9 @@ export default function FamilyEditor({ onUpdate }: { onUpdate?: () => void }) {
                 </div>
                 <div>
                   <div className="font-semibold text-gray-800">{member.name}</div>
-                  <div className="text-sm text-gray-600">{member.email}</div>
+                  {member.email && (
+                    <div className="text-sm text-gray-600">{member.email}</div>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-2">

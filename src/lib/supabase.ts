@@ -18,21 +18,21 @@ export type Database = {
         Row: {
           id: string
           name: string
-          email: string
+          email: string | null
           avatar_color: string
           created_at: string
         }
         Insert: {
           id?: string
           name: string
-          email: string
+          email?: string | null
           avatar_color?: string
           created_at?: string
         }
         Update: {
           id?: string
           name?: string
-          email?: string
+          email?: string | null
           avatar_color?: string
           created_at?: string
         }
