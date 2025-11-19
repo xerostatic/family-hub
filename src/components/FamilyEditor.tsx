@@ -13,7 +13,7 @@ const AVATAR_COLORS = [
   '#EC4899', '#06B6D4', '#84CC16', '#F97316', '#6366F1'
 ]
 
-export default function FamilyEditor() {
+export default function FamilyEditor({ onUpdate }: { onUpdate?: () => void }) {
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([])
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -54,6 +54,7 @@ export default function FamilyEditor() {
 
       const { error } = await supabase
         .from('family_members')
+        // @ts-expect-error - Supabase type inference issue with Database generic
         .update(updateData)
         .eq('id', editingId)
       
@@ -72,6 +73,7 @@ export default function FamilyEditor() {
 
       const { error } = await supabase
         .from('family_members')
+        // @ts-expect-error - Supabase type inference issue with Database generic
         .insert([insertData])
       
       if (error) {
@@ -83,6 +85,7 @@ export default function FamilyEditor() {
 
     resetForm()
     loadFamilyMembers()
+    if (onUpdate) onUpdate()
   }
 
   const handleEdit = (member: FamilyMember) => {
@@ -112,6 +115,7 @@ export default function FamilyEditor() {
     }
     
     loadFamilyMembers()
+    if (onUpdate) onUpdate()
   }
 
   const resetForm = () => {
