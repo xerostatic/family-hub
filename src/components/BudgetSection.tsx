@@ -802,12 +802,12 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
               )}
             </>
           )}
-
-          {/* Debt Snowball View */}
-          {viewMode === 'debt' && (
-            <DebtSnowballView budgetItems={budgetItems} />
-          )}
         </div>
+      )}
+
+      {/* Debt Snowball View */}
+      {viewMode === 'debt' && (
+        <DebtSnowballView budgetItems={budgetItems} />
       )}
     </div>
   )
