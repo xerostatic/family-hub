@@ -94,7 +94,7 @@ export type Database = {
           description: string
           assigned_to: string
           completed: boolean
-          due_date: string
+          due_date: string | null
           recurrence: string | null
           created_at: string
         }
@@ -104,7 +104,7 @@ export type Database = {
           description?: string
           assigned_to: string
           completed?: boolean
-          due_date: string
+          due_date?: string | null
           recurrence?: string | null
           created_at?: string
         }
@@ -114,7 +114,7 @@ export type Database = {
           description?: string
           assigned_to?: string
           completed?: boolean
-          due_date?: string
+          due_date?: string | null
           recurrence?: string | null
           created_at?: string
         }

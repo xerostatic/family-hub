@@ -35,7 +35,7 @@ export default function ChoresSection({ familyMembers }: { familyMembers: Family
     const { data, error } = await supabase
       .from('chores')
       .select('*')
-      .order('due_date')
+      .order('due_date', { nullsFirst: false })
     
     if (error) {
       console.error('Error loading chores:', error)
@@ -52,7 +52,7 @@ export default function ChoresSection({ familyMembers }: { familyMembers: Family
       title: formData.title,
       description: formData.description || undefined,
       assigned_to: String(formData.assigned_to),
-      due_date: formData.due_date,
+      due_date: formData.recurrence !== 'none' ? null : (formData.due_date || null),
       recurrence: formData.recurrence === 'none' ? null : formData.recurrence,
     }
 
@@ -218,20 +218,30 @@ export default function ChoresSection({ familyMembers }: { familyMembers: Family
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Due Date {formData.recurrence !== 'none' && '(Not required for recurring)'}
+              </label>
               <input
                 type="date"
                 value={formData.due_date}
                 onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
+                required={formData.recurrence === 'none'}
+                disabled={formData.recurrence !== 'none'}
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Recurrence</label>
               <select
                 value={formData.recurrence}
-                onChange={(e) => setFormData({ ...formData, recurrence: e.target.value })}
+                onChange={(e) => {
+                  const newRecurrence = e.target.value
+                  setFormData({ 
+                    ...formData, 
+                    recurrence: newRecurrence,
+                    due_date: newRecurrence !== 'none' ? '' : formData.due_date
+                  })
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="none">One-time</option>
@@ -322,7 +332,7 @@ export default function ChoresSection({ familyMembers }: { familyMembers: Family
         ) : (
           chores.map(chore => {
             const member = familyMembers.find(m => m.id === chore.assigned_to)
-            const isOverdue = new Date(chore.due_date) < new Date() && !chore.completed
+            const isOverdue = chore.due_date && new Date(chore.due_date) < new Date() && !chore.completed
             
             return (
               <div
@@ -367,7 +377,10 @@ export default function ChoresSection({ familyMembers }: { familyMembers: Family
                       <p className="text-sm text-gray-600 mb-2">{chore.description}</p>
                     )}
                     <div className="text-sm text-gray-600">
-                      Due: {format(new Date(chore.due_date), 'MMM d, yyyy')} • Assigned to: {member?.name}
+                      {chore.due_date ? (
+                        <>Due: {format(new Date(chore.due_date), 'MMM d, yyyy')} • </>
+                      ) : null}
+                      Assigned to: {member?.name}
                     </div>
                   </div>
                 </div>

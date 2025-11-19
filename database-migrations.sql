@@ -70,3 +70,14 @@ EXCEPTION
         NULL;
 END $$;
 
+-- Step 8: Make due_date optional in chores table (for recurring chores)
+DO $$
+BEGIN
+    -- Drop NOT NULL constraint if it exists
+    ALTER TABLE chores ALTER COLUMN due_date DROP NOT NULL;
+EXCEPTION
+    WHEN OTHERS THEN
+        -- If constraint doesn't exist, that's fine
+        NULL;
+END $$;
+
