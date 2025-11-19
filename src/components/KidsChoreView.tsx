@@ -70,17 +70,48 @@ export default function KidsChoreView({
 
   const updateChoreStatus = async (choreId: string, newStatus: 'not_started' | 'in_progress' | 'completed') => {
     const existingStatus = dailyStatuses.find(s => s.chore_id === choreId && s.status_date === selectedDate)
+    const now = new Date().toISOString()
 
+    // Optimistically update local state immediately
+    if (existingStatus) {
+      setDailyStatuses(prev => 
+        prev.map(s => 
+          s.id === existingStatus.id 
+            ? { ...s, status: newStatus, updated_at: now }
+            : s
+        )
+      )
+    } else {
+      // Create optimistic new status entry
+      const optimisticStatus: DailyChoreStatus = {
+        id: `temp-${choreId}-${selectedDate}`, // Temporary ID
+        chore_id: choreId,
+        status_date: selectedDate,
+        status: newStatus,
+        updated_at: now
+      }
+      setDailyStatuses(prev => [...prev, optimisticStatus])
+    }
+
+    // Celebrate completion!
+    if (newStatus === 'completed') {
+      setCelebrating(choreId)
+      setTimeout(() => setCelebrating(null), 2000)
+    }
+
+    // Update in database
     if (existingStatus) {
       // Update existing status
       const { error } = await supabase
         .from('daily_chore_status')
         // @ts-expect-error - Supabase type inference issue
-        .update({ status: newStatus, updated_at: new Date().toISOString() } as DailyChoreStatusUpdate)
+        .update({ status: newStatus, updated_at: now } as DailyChoreStatusUpdate)
         .eq('id', existingStatus.id)
       
       if (error) {
         console.error('Error updating status:', error)
+        // Revert on error
+        loadDailyStatuses()
         return
       }
     } else {
@@ -91,23 +122,32 @@ export default function KidsChoreView({
         status: newStatus
       }
 
-      const { error } = await supabase
+      const { error, data } = await supabase
         .from('daily_chore_status')
         // @ts-expect-error - Supabase type inference issue
         .insert([insertData])
+        .select()
       
       if (error) {
         console.error('Error creating status:', error)
+        // Revert on error
+        loadDailyStatuses()
         return
+      }
+
+      // Replace optimistic entry with real one
+      if (data && data[0]) {
+        setDailyStatuses(prev => 
+          prev.map(s => 
+            s.id === `temp-${choreId}-${selectedDate}`
+              ? data[0]
+              : s
+          )
+        )
       }
     }
 
-    // Celebrate completion!
-    if (newStatus === 'completed') {
-      setCelebrating(choreId)
-      setTimeout(() => setCelebrating(null), 2000)
-    }
-
+    // Still refresh to ensure sync
     loadDailyStatuses()
   }
 

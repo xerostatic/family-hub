@@ -57,15 +57,21 @@ export default function ChoresSection({ familyMembers }: { familyMembers: Family
       recurrence: formData.recurrence === 'none' ? null : formData.recurrence,
     }
 
-    const { error } = await supabase
+    const { error, data } = await supabase
       .from('chores')
       // @ts-expect-error - Supabase type inference issue with Database generic
       .insert([insertData])
+      .select()
     
     if (error) {
       console.error('Error creating chore:', error)
       alert('Failed to create chore. Please try again.')
       return
+    }
+    
+    // Optimistically add the new chore to state
+    if (data && data[0]) {
+      setChores(prevChores => [...prevChores, data[0] as Chore])
     }
     
     setFormData({
@@ -76,10 +82,18 @@ export default function ChoresSection({ familyMembers }: { familyMembers: Family
       recurrence: 'none'
     })
     setShowForm(false)
+    // Still refresh to ensure sync
     loadChores()
   }
 
   const toggleCompleted = async (id: string, completed: boolean) => {
+    // Optimistically update local state immediately
+    setChores(prevChores => 
+      prevChores.map(chore => 
+        chore.id === id ? { ...chore, completed: !completed } : chore
+      )
+    )
+    
     const { error } = await supabase
       .from('chores')
       // @ts-expect-error - Supabase type inference issue with Database generic
@@ -88,13 +102,19 @@ export default function ChoresSection({ familyMembers }: { familyMembers: Family
     
     if (error) {
       console.error('Error updating chore:', error)
+      // Revert on error
+      loadChores()
       return
     }
     
+    // Refresh to ensure sync (but UI already updated)
     loadChores()
   }
 
   const deleteChore = async (id: string) => {
+    // Optimistically remove from local state immediately
+    setChores(prevChores => prevChores.filter(chore => chore.id !== id))
+    
     const { error } = await supabase
       .from('chores')
       .delete()
@@ -103,14 +123,24 @@ export default function ChoresSection({ familyMembers }: { familyMembers: Family
     if (error) {
       console.error('Error deleting chore:', error)
       alert('Failed to delete chore. Please try again.')
+      // Revert on error
+      loadChores()
       return
     }
     
+    // Still refresh to ensure sync
     loadChores()
   }
 
-  const completedCount = chores.filter(c => c.completed).length
-  const totalCount = chores.length
+  // Real-time statistics that update automatically when chores change
+  const completedCount = useMemo(() => 
+    chores.filter(c => c.completed).length, 
+    [chores]
+  )
+  const totalCount = useMemo(() => 
+    chores.length, 
+    [chores]
+  )
 
   // Chart data by person
   const chartData = useMemo(() => {
