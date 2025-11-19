@@ -46,6 +46,8 @@ export type Database = {
           due_date: string
           paid: boolean
           family_member_id: string
+          is_income: boolean
+          recurrence: string | null
           created_at: string
         }
         Insert: {
@@ -56,6 +58,8 @@ export type Database = {
           due_date: string
           paid?: boolean
           family_member_id: string
+          is_income?: boolean
+          recurrence?: string | null
           created_at?: string
         }
         Update: {
@@ -66,6 +70,8 @@ export type Database = {
           due_date?: string
           paid?: boolean
           family_member_id?: string
+          is_income?: boolean
+          recurrence?: string | null
           created_at?: string
         }
       }

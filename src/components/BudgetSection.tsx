@@ -1,22 +1,28 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { supabase, Database } from '@/lib/supabase'
-import { Plus, Trash2, Check, X } from 'lucide-react'
-import { format } from 'date-fns'
+import { Plus, Trash2, Check, TrendingUp, TrendingDown, DollarSign } from 'lucide-react'
+import { format, startOfMonth, endOfMonth, eachMonthOfInterval, parseISO, addMonths } from 'date-fns'
 import { FamilyMember, BudgetItem } from '@/types'
+import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 type BudgetItemInsert = Database['public']['Tables']['budget_items']['Insert']
+
+const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899']
 
 export default function BudgetSection({ familyMembers }: { familyMembers: FamilyMember[] }) {
   const [budgetItems, setBudgetItems] = useState<BudgetItem[]>([])
   const [showForm, setShowForm] = useState(false)
+  const [viewMode, setViewMode] = useState<'list' | 'charts' | 'projections'>('charts')
   const [formData, setFormData] = useState({
     category: 'Bills',
     description: '',
     amount: '',
     due_date: '',
-    family_member_id: familyMembers[0]?.id || ''
+    family_member_id: familyMembers[0]?.id || '',
+    is_income: false,
+    recurrence: 'none'
   })
 
   useEffect(() => {
@@ -52,6 +58,8 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
       amount: parseFloat(formData.amount),
       due_date: formData.due_date,
       family_member_id: String(formData.family_member_id),
+      is_income: formData.is_income,
+      recurrence: formData.recurrence === 'none' ? null : formData.recurrence,
     }
 
     const { error } = await supabase
@@ -70,7 +78,9 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
       description: '',
       amount: '',
       due_date: '',
-      family_member_id: familyMembers[0]?.id || ''
+      family_member_id: familyMembers[0]?.id || '',
+      is_income: false,
+      recurrence: 'none'
     })
     setShowForm(false)
     loadBudgetItems()
@@ -106,36 +116,183 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
     loadBudgetItems()
   }
 
-  const totalAmount = budgetItems.reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0)
-  const paidAmount = budgetItems.filter(item => item.paid).reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0)
-  const unpaidAmount = totalAmount - paidAmount
+  // Calculate totals
+  const expenses = budgetItems.filter(item => !item.is_income)
+  const income = budgetItems.filter(item => item.is_income)
+  
+  const totalExpenses = expenses.reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0)
+  const totalIncome = income.reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0)
+  const netAmount = totalIncome - totalExpenses
+  
+  const paidExpenses = expenses.filter(item => item.paid).reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0)
+  const unpaidExpenses = totalExpenses - paidExpenses
+
+  // Monthly data for charts
+  const monthlyData = useMemo(() => {
+    const months = eachMonthOfInterval({
+      start: startOfMonth(new Date()),
+      end: addMonths(startOfMonth(new Date()), 5)
+    })
+
+    return months.map(month => {
+      const monthStart = startOfMonth(month)
+      const monthEnd = endOfMonth(month)
+      const monthKey = format(month, 'MMM yyyy')
+
+      // Get items for this month
+      const monthExpenses = expenses.filter(item => {
+        const itemDate = parseISO(item.due_date)
+        return itemDate >= monthStart && itemDate <= monthEnd
+      })
+
+      const monthIncome = income.filter(item => {
+        const itemDate = parseISO(item.due_date)
+        return itemDate >= monthStart && itemDate <= monthEnd
+      })
+
+      // Calculate recurring items
+      const recurringExpenses = expenses.filter(item => item.recurrence === 'monthly')
+      const recurringIncome = income.filter(item => item.recurrence === 'monthly')
+
+      const recurringExpenseTotal = recurringExpenses.reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0)
+      const recurringIncomeTotal = recurringIncome.reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0)
+
+      return {
+        month: monthKey,
+        expenses: monthExpenses.reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0) + recurringExpenseTotal,
+        income: monthIncome.reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0) + recurringIncomeTotal,
+        net: (monthIncome.reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0) + recurringIncomeTotal) - 
+             (monthExpenses.reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0) + recurringExpenseTotal)
+      }
+    })
+  }, [budgetItems, expenses, income])
+
+  // Category breakdown
+  const categoryData = useMemo(() => {
+    const categoryMap = new Map<string, number>()
+    expenses.forEach(item => {
+      const current = categoryMap.get(item.category) || 0
+      categoryMap.set(item.category, current + parseFloat(item.amount.toString()))
+    })
+    return Array.from(categoryMap.entries()).map(([name, value]) => ({ name, value }))
+  }, [expenses])
+
+  // Current month recap
+  const currentMonth = useMemo(() => {
+    const now = new Date()
+    const monthStart = startOfMonth(now)
+    const monthEnd = endOfMonth(now)
+
+    const monthExpenses = expenses.filter(item => {
+      const itemDate = parseISO(item.due_date)
+      return itemDate >= monthStart && itemDate <= monthEnd
+    })
+
+    const monthIncome = income.filter(item => {
+      const itemDate = parseISO(item.due_date)
+      return itemDate >= monthStart && itemDate <= monthEnd
+    })
+
+    const recurringExpenses = expenses.filter(item => item.recurrence === 'monthly')
+    const recurringIncome = income.filter(item => item.recurrence === 'monthly')
+
+    return {
+      expenses: monthExpenses.reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0) + 
+                recurringExpenses.reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0),
+      income: monthIncome.reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0) + 
+              recurringIncome.reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0),
+      paid: monthExpenses.filter(item => item.paid).reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0) +
+            recurringExpenses.filter(item => item.paid).reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0)
+    }
+  }, [budgetItems, expenses, income])
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">Budget Tracker</h2>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Add Item
-        </button>
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800">Budget Tracker</h2>
+          <p className="text-sm text-gray-600 mt-1">
+            {format(new Date(), 'MMMM yyyy')} Recap & Projections
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setViewMode('charts')}
+              className={`px-3 py-1 rounded text-sm transition-colors ${
+                viewMode === 'charts' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              Charts
+            </button>
+            <button
+              onClick={() => setViewMode('projections')}
+              className={`px-3 py-1 rounded text-sm transition-colors ${
+                viewMode === 'projections' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              Projections
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`px-3 py-1 rounded text-sm transition-colors ${
+                viewMode === 'list' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              List
+            </button>
+          </div>
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Add Item
+          </button>
+        </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-          <div className="text-sm text-blue-600 mb-1">Total Budget</div>
-          <div className="text-2xl font-bold text-blue-700">${totalAmount.toFixed(2)}</div>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-          <div className="text-sm text-green-600 mb-1">Paid</div>
-          <div className="text-2xl font-bold text-green-700">${paidAmount.toFixed(2)}</div>
+          <div className="flex items-center gap-2 text-sm text-green-600 mb-1">
+            <TrendingUp className="w-4 h-4" />
+            Total Income
+          </div>
+          <div className="text-2xl font-bold text-green-700">${totalIncome.toFixed(2)}</div>
         </div>
         <div className="bg-red-50 p-4 rounded-lg border border-red-200">
-          <div className="text-sm text-red-600 mb-1">Unpaid</div>
-          <div className="text-2xl font-bold text-red-700">${unpaidAmount.toFixed(2)}</div>
+          <div className="flex items-center gap-2 text-sm text-red-600 mb-1">
+            <TrendingDown className="w-4 h-4" />
+            Total Expenses
+          </div>
+          <div className="text-2xl font-bold text-red-700">${totalExpenses.toFixed(2)}</div>
+        </div>
+        <div className={`p-4 rounded-lg border ${
+          netAmount >= 0 
+            ? 'bg-blue-50 border-blue-200' 
+            : 'bg-orange-50 border-orange-200'
+        }`}>
+          <div className={`flex items-center gap-2 text-sm mb-1 ${
+            netAmount >= 0 ? 'text-blue-600' : 'text-orange-600'
+          }`}>
+            <DollarSign className="w-4 h-4" />
+            Net
+          </div>
+          <div className={`text-2xl font-bold ${
+            netAmount >= 0 ? 'text-blue-700' : 'text-orange-700'
+          }`}>
+            ${netAmount.toFixed(2)}
+          </div>
+        </div>
+        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+          <div className="text-sm text-gray-600 mb-1">This Month</div>
+          <div className="text-2xl font-bold text-gray-700">
+            ${(currentMonth.income - currentMonth.expenses).toFixed(2)}
+          </div>
+          <div className="text-xs text-gray-500 mt-1">
+            {currentMonth.paid.toFixed(2)} paid
+          </div>
         </div>
       </div>
 
@@ -143,6 +300,17 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-gray-50 p-4 rounded-lg mb-6 border border-gray-200">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={formData.is_income}
+                  onChange={(e) => setFormData({ ...formData, is_income: e.target.checked })}
+                  className="w-4 h-4"
+                />
+                <span className="text-sm font-medium text-gray-700">This is income</span>
+              </label>
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
               <select
@@ -156,6 +324,7 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
                 <option>Gas</option>
                 <option>Entertainment</option>
                 <option>Healthcare</option>
+                <option>Salary</option>
                 <option>Other</option>
               </select>
             </div>
@@ -178,7 +347,7 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Electric bill, groceries, etc."
+                placeholder="Electric bill, salary, etc."
                 required
               />
             </div>
@@ -191,6 +360,18 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Recurrence</label>
+              <select
+                value={formData.recurrence}
+                onChange={(e) => setFormData({ ...formData, recurrence: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="none">One-time</option>
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly</option>
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Assigned To</label>
@@ -224,63 +405,247 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
         </form>
       )}
 
-      {/* Budget Items List */}
-      <div className="space-y-3">
-        {budgetItems.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            No budget items yet. Click "Add Item" to get started!
-          </div>
-        ) : (
-          budgetItems.map(item => {
-            const member = familyMembers.find(m => m.id === item.family_member_id)
-            return (
-              <div
-                key={item.id}
-                className={`flex items-center justify-between p-4 rounded-lg border-2 transition-all ${
-                  item.paid
-                    ? 'bg-green-50 border-green-200'
-                    : 'bg-white border-gray-200 hover:border-blue-300'
-                }`}
-              >
-                <div className="flex items-center gap-4 flex-1">
-                  <button
-                    onClick={() => togglePaid(item.id, item.paid)}
-                    className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${
-                      item.paid
-                        ? 'bg-green-500 text-white'
-                        : 'border-2 border-gray-300 hover:border-blue-500'
-                    }`}
+      {/* Charts View */}
+      {viewMode === 'charts' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Income vs Expenses Line Chart */}
+            <div className="bg-white p-4 rounded-lg border border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Income vs Expenses (6 Months)</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={monthlyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
+                  <Legend />
+                  <Line type="monotone" dataKey="income" stroke="#10B981" strokeWidth={2} name="Income" />
+                  <Line type="monotone" dataKey="expenses" stroke="#EF4444" strokeWidth={2} name="Expenses" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Category Breakdown Pie Chart */}
+            <div className="bg-white p-4 rounded-lg border border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">Expenses by Category</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={categoryData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name} ${percent ? (percent * 100).toFixed(0) : 0}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
                   >
-                    {item.paid && <Check className="w-4 h-4" />}
-                  </button>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className={`font-semibold ${item.paid ? 'line-through text-gray-500' : 'text-gray-800'}`}>
-                        {item.description}
-                      </span>
-                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                        {item.category}
-                      </span>
-                    </div>
-                    <div className="text-sm text-gray-600 mt-1">
-                      Due: {format(new Date(item.due_date), 'MMM d, yyyy')} • Assigned to: {member?.name}
-                    </div>
-                  </div>
-                  <div className={`text-xl font-bold ${item.paid ? 'text-gray-500' : 'text-gray-800'}`}>
-                    ${parseFloat(item.amount.toString()).toFixed(2)}
+                    {categoryData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Monthly Net Bar Chart */}
+          <div className="bg-white p-4 rounded-lg border border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Monthly Net (Income - Expenses)</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
+                <Bar dataKey="net" fill="#3B82F6" name="Net Amount" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {/* Projections View */}
+      {viewMode === 'projections' && (
+        <div className="space-y-4">
+          <div className="bg-white p-6 rounded-lg border border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">6-Month Projections</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2 px-4 font-semibold text-gray-700">Month</th>
+                    <th className="text-right py-2 px-4 font-semibold text-green-600">Income</th>
+                    <th className="text-right py-2 px-4 font-semibold text-red-600">Expenses</th>
+                    <th className="text-right py-2 px-4 font-semibold text-gray-700">Net</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {monthlyData.map((month, index) => (
+                    <tr key={index} className="border-b hover:bg-gray-50">
+                      <td className="py-2 px-4">{month.month}</td>
+                      <td className="text-right py-2 px-4 text-green-600">${month.income.toFixed(2)}</td>
+                      <td className="text-right py-2 px-4 text-red-600">${month.expenses.toFixed(2)}</td>
+                      <td className={`text-right py-2 px-4 font-semibold ${
+                        month.net >= 0 ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        ${month.net.toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Current Month Recap */}
+          <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">
+              {format(new Date(), 'MMMM yyyy')} Recap
+            </h3>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <div className="text-sm text-gray-600">Income</div>
+                <div className="text-2xl font-bold text-green-600">${currentMonth.income.toFixed(2)}</div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-600">Expenses</div>
+                <div className="text-2xl font-bold text-red-600">${currentMonth.expenses.toFixed(2)}</div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-600">Net</div>
+                <div className={`text-2xl font-bold ${
+                  (currentMonth.income - currentMonth.expenses) >= 0 ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  ${(currentMonth.income - currentMonth.expenses).toFixed(2)}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* List View */}
+      {viewMode === 'list' && (
+        <div className="space-y-3">
+          {budgetItems.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              No budget items yet. Click "Add Item" to get started!
+            </div>
+          ) : (
+            <>
+              {/* Income Items */}
+              {income.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-green-600 mb-3">Income</h3>
+                  <div className="space-y-3">
+                    {income.map(item => {
+                      const member = familyMembers.find(m => m.id === item.family_member_id)
+                      return (
+                        <div
+                          key={item.id}
+                          className="flex items-center justify-between p-4 rounded-lg border-2 border-green-200 bg-green-50"
+                        >
+                          <div className="flex items-center gap-4 flex-1">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-gray-800">{item.description}</span>
+                                <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                                  {item.category}
+                                </span>
+                                {item.recurrence && (
+                                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                                    {item.recurrence}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-sm text-gray-600 mt-1">
+                                {format(new Date(item.due_date), 'MMM d, yyyy')} • {member?.name}
+                              </div>
+                            </div>
+                            <div className="text-xl font-bold text-green-600">
+                              +${parseFloat(item.amount.toString()).toFixed(2)}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => deleteItem(item.id)}
+                            className="ml-4 text-red-500 hover:text-red-700 transition-colors"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
-                <button
-                  onClick={() => deleteItem(item.id)}
-                  className="ml-4 text-red-500 hover:text-red-700 transition-colors"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
-              </div>
-            )
-          })
-        )}
-      </div>
+              )}
+
+              {/* Expense Items */}
+              {expenses.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-red-600 mb-3">Expenses</h3>
+                  <div className="space-y-3">
+                    {expenses.map(item => {
+                      const member = familyMembers.find(m => m.id === item.family_member_id)
+                      return (
+                        <div
+                          key={item.id}
+                          className={`flex items-center justify-between p-4 rounded-lg border-2 transition-all ${
+                            item.paid
+                              ? 'bg-green-50 border-green-200'
+                              : 'bg-white border-gray-200 hover:border-blue-300'
+                          }`}
+                        >
+                          <div className="flex items-center gap-4 flex-1">
+                            <button
+                              onClick={() => togglePaid(item.id, item.paid)}
+                              className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${
+                                item.paid
+                                  ? 'bg-green-500 text-white'
+                                  : 'border-2 border-gray-300 hover:border-blue-500'
+                              }`}
+                            >
+                              {item.paid && <Check className="w-4 h-4" />}
+                            </button>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className={`font-semibold ${item.paid ? 'line-through text-gray-500' : 'text-gray-800'}`}>
+                                  {item.description}
+                                </span>
+                                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                                  {item.category}
+                                </span>
+                                {item.recurrence && (
+                                  <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">
+                                    {item.recurrence}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-sm text-gray-600 mt-1">
+                                Due: {format(new Date(item.due_date), 'MMM d, yyyy')} • {member?.name}
+                              </div>
+                            </div>
+                            <div className={`text-xl font-bold ${item.paid ? 'text-gray-500' : 'text-gray-800'}`}>
+                              ${parseFloat(item.amount.toString()).toFixed(2)}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => deleteItem(item.id)}
+                            className="ml-4 text-red-500 hover:text-red-700 transition-colors"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </div>
   )
 }
