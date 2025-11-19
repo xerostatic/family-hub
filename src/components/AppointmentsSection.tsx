@@ -4,21 +4,11 @@ import { useState, useEffect } from 'react'
 import { supabase, Database } from '@/lib/supabase'
 import { Plus, Trash2, MapPin, Clock, Bell, BellOff } from 'lucide-react'
 import { format } from 'date-fns'
+import { FamilyMember, Appointment } from '@/types'
 
 type AppointmentInsert = Database['public']['Tables']['appointments']['Insert']
 
-interface Appointment {
-  id: string
-  title: string
-  description: string
-  family_member_id: string
-  appointment_date: string
-  appointment_time: string
-  location: string
-  reminder_sent: boolean
-}
-
-export default function AppointmentsSection({ familyMembers }: { familyMembers: any[] }) {
+export default function AppointmentsSection({ familyMembers }: { familyMembers: FamilyMember[] }) {
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [showForm, setShowForm] = useState(false)
   const [formData, setFormData] = useState({
@@ -41,11 +31,16 @@ export default function AppointmentsSection({ familyMembers }: { familyMembers: 
   }, [familyMembers])
 
   const loadAppointments = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('appointments')
       .select('*')
       .order('appointment_date')
       .order('appointment_time')
+    
+    if (error) {
+      console.error('Error loading appointments:', error)
+      return
+    }
     
     if (data) setAppointments(data)
   }
@@ -67,35 +62,50 @@ export default function AppointmentsSection({ familyMembers }: { familyMembers: 
       // @ts-expect-error - Supabase type inference issue with Database generic
       .insert([insertData])
     
-    if (!error) {
-      setFormData({
-        title: '',
-        description: '',
-        family_member_id: familyMembers[0]?.id || '',
-        appointment_date: '',
-        appointment_time: '',
-        location: ''
-      })
-      setShowForm(false)
-      loadAppointments()
+    if (error) {
+      console.error('Error creating appointment:', error)
+      alert('Failed to create appointment. Please try again.')
+      return
     }
+    
+    setFormData({
+      title: '',
+      description: '',
+      family_member_id: familyMembers[0]?.id || '',
+      appointment_date: '',
+      appointment_time: '',
+      location: ''
+    })
+    setShowForm(false)
+    loadAppointments()
   }
 
   const toggleReminder = async (id: string, reminderSent: boolean) => {
-    await supabase
+    const { error } = await supabase
       .from('appointments')
       // @ts-expect-error - Supabase type inference issue with Database generic
       .update({ reminder_sent: !reminderSent })
       .eq('id', id)
     
+    if (error) {
+      console.error('Error updating reminder:', error)
+      return
+    }
+    
     loadAppointments()
   }
 
   const deleteAppointment = async (id: string) => {
-    await supabase
+    const { error } = await supabase
       .from('appointments')
       .delete()
       .eq('id', id)
+    
+    if (error) {
+      console.error('Error deleting appointment:', error)
+      alert('Failed to delete appointment. Please try again.')
+      return
+    }
     
     loadAppointments()
   }

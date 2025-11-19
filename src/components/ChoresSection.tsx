@@ -4,20 +4,11 @@ import { useState, useEffect } from 'react'
 import { supabase, Database } from '@/lib/supabase'
 import { Plus, Trash2, Check, Repeat } from 'lucide-react'
 import { format } from 'date-fns'
+import { FamilyMember, Chore } from '@/types'
 
 type ChoreInsert = Database['public']['Tables']['chores']['Insert']
 
-interface Chore {
-  id: string
-  title: string
-  description: string
-  assigned_to: string
-  completed: boolean
-  due_date: string
-  recurrence: string | null
-}
-
-export default function ChoresSection({ familyMembers }: { familyMembers: any[] }) {
+export default function ChoresSection({ familyMembers }: { familyMembers: FamilyMember[] }) {
   const [chores, setChores] = useState<Chore[]>([])
   const [showForm, setShowForm] = useState(false)
   const [formData, setFormData] = useState({
@@ -39,10 +30,15 @@ export default function ChoresSection({ familyMembers }: { familyMembers: any[] 
   }, [familyMembers])
 
   const loadChores = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('chores')
       .select('*')
       .order('due_date')
+    
+    if (error) {
+      console.error('Error loading chores:', error)
+      return
+    }
     
     if (data) setChores(data)
   }
@@ -63,34 +59,49 @@ export default function ChoresSection({ familyMembers }: { familyMembers: any[] 
       // @ts-expect-error - Supabase type inference issue with Database generic
       .insert([insertData])
     
-    if (!error) {
-      setFormData({
-        title: '',
-        description: '',
-        assigned_to: familyMembers[0]?.id || '',
-        due_date: '',
-        recurrence: 'none'
-      })
-      setShowForm(false)
-      loadChores()
+    if (error) {
+      console.error('Error creating chore:', error)
+      alert('Failed to create chore. Please try again.')
+      return
     }
+    
+    setFormData({
+      title: '',
+      description: '',
+      assigned_to: familyMembers[0]?.id || '',
+      due_date: '',
+      recurrence: 'none'
+    })
+    setShowForm(false)
+    loadChores()
   }
 
   const toggleCompleted = async (id: string, completed: boolean) => {
-    await supabase
+    const { error } = await supabase
       .from('chores')
       // @ts-expect-error - Supabase type inference issue with Database generic
       .update({ completed: !completed })
       .eq('id', id)
     
+    if (error) {
+      console.error('Error updating chore:', error)
+      return
+    }
+    
     loadChores()
   }
 
   const deleteChore = async (id: string) => {
-    await supabase
+    const { error } = await supabase
       .from('chores')
       .delete()
       .eq('id', id)
+    
+    if (error) {
+      console.error('Error deleting chore:', error)
+      alert('Failed to delete chore. Please try again.')
+      return
+    }
     
     loadChores()
   }

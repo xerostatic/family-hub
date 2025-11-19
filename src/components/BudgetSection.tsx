@@ -4,20 +4,11 @@ import { useState, useEffect } from 'react'
 import { supabase, Database } from '@/lib/supabase'
 import { Plus, Trash2, Check, X } from 'lucide-react'
 import { format } from 'date-fns'
+import { FamilyMember, BudgetItem } from '@/types'
 
 type BudgetItemInsert = Database['public']['Tables']['budget_items']['Insert']
 
-interface BudgetItem {
-  id: string
-  category: string
-  description: string
-  amount: number
-  due_date: string
-  paid: boolean
-  family_member_id: string
-}
-
-export default function BudgetSection({ familyMembers }: { familyMembers: any[] }) {
+export default function BudgetSection({ familyMembers }: { familyMembers: FamilyMember[] }) {
   const [budgetItems, setBudgetItems] = useState<BudgetItem[]>([])
   const [showForm, setShowForm] = useState(false)
   const [formData, setFormData] = useState({
@@ -39,10 +30,15 @@ export default function BudgetSection({ familyMembers }: { familyMembers: any[] 
   }, [familyMembers])
 
   const loadBudgetItems = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('budget_items')
       .select('*')
       .order('due_date')
+    
+    if (error) {
+      console.error('Error loading budget items:', error)
+      return
+    }
     
     if (data) setBudgetItems(data)
   }
@@ -63,34 +59,49 @@ export default function BudgetSection({ familyMembers }: { familyMembers: any[] 
       // @ts-expect-error - Supabase type inference issue with Database generic
       .insert([insertData])
     
-    if (!error) {
-      setFormData({
-        category: 'Bills',
-        description: '',
-        amount: '',
-        due_date: '',
-        family_member_id: familyMembers[0]?.id || ''
-      })
-      setShowForm(false)
-      loadBudgetItems()
+    if (error) {
+      console.error('Error creating budget item:', error)
+      alert('Failed to create budget item. Please try again.')
+      return
     }
+    
+    setFormData({
+      category: 'Bills',
+      description: '',
+      amount: '',
+      due_date: '',
+      family_member_id: familyMembers[0]?.id || ''
+    })
+    setShowForm(false)
+    loadBudgetItems()
   }
 
   const togglePaid = async (id: string, paid: boolean) => {
-    await supabase
+    const { error } = await supabase
       .from('budget_items')
       // @ts-expect-error - Supabase type inference issue with Database generic
       .update({ paid: !paid })
       .eq('id', id)
     
+    if (error) {
+      console.error('Error updating budget item:', error)
+      return
+    }
+    
     loadBudgetItems()
   }
 
   const deleteItem = async (id: string) => {
-    await supabase
+    const { error } = await supabase
       .from('budget_items')
       .delete()
       .eq('id', id)
+    
+    if (error) {
+      console.error('Error deleting budget item:', error)
+      alert('Failed to delete budget item. Please try again.')
+      return
+    }
     
     loadBudgetItems()
   }

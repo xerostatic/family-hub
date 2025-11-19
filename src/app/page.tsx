@@ -6,10 +6,11 @@ import BudgetSection from '@/components/BudgetSection'
 import ChoresSection from '@/components/ChoresSection'
 import AppointmentsSection from '@/components/AppointmentsSection'
 import { CalendarDays, DollarSign, ListTodo } from 'lucide-react'
+import { FamilyMember } from '@/types'
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'budget' | 'chores' | 'appointments'>('budget')
-  const [familyMembers, setFamilyMembers] = useState<any[]>([])
+  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([])
 
   useEffect(() => {
     loadFamilyMembers()
@@ -20,6 +21,11 @@ export default function Home() {
       .from('family_members')
       .select('*')
       .order('name')
+    
+    if (error) {
+      console.error('Error loading family members:', error)
+      return
+    }
     
     if (data) setFamilyMembers(data)
   }
