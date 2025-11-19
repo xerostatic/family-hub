@@ -61,7 +61,13 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
       due_date: formData.due_date,
       family_member_id: String(formData.family_member_id),
       is_income: formData.is_income,
-      recurrence: formData.recurrence === 'none' ? null : formData.recurrence,
+      // For income items, use pay_frequency to determine recurrence
+      // For expenses, use the recurrence field directly
+      recurrence: formData.is_income 
+        ? (formData.pay_frequency === 'biweekly' ? 'biweekly' : 
+           formData.pay_frequency === 'monthly' ? 'monthly' : 
+           formData.pay_frequency === 'yearly' ? 'yearly' : null)
+        : (formData.recurrence === 'none' ? null : formData.recurrence),
       payday_date: formData.is_income && formData.payday_date ? formData.payday_date : null,
       pay_frequency: formData.is_income && formData.pay_frequency ? formData.pay_frequency : null,
     }
@@ -450,7 +456,20 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
                   <label className="block text-sm font-medium text-gray-700 mb-1">Pay Frequency</label>
                   <select
                     value={formData.pay_frequency}
-                    onChange={(e) => setFormData({ ...formData, pay_frequency: e.target.value, recurrence: e.target.value === 'biweekly' ? 'biweekly' : e.target.value })}
+                    onChange={(e) => {
+                      const frequency = e.target.value
+                      // Map pay_frequency to valid recurrence values
+                      let recurrence = 'none'
+                      if (frequency === 'biweekly') {
+                        recurrence = 'biweekly'
+                      } else if (frequency === 'monthly') {
+                        recurrence = 'monthly'
+                      } else if (frequency === 'yearly') {
+                        recurrence = 'yearly'
+                      }
+                      // For weekly, keep recurrence as 'none' since it's not in the constraint
+                      setFormData({ ...formData, pay_frequency: frequency, recurrence })
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
                   >
