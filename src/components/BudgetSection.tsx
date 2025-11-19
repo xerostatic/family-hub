@@ -6,6 +6,7 @@ import { Plus, Trash2, Check, TrendingUp, TrendingDown, DollarSign } from 'lucid
 import { format, startOfMonth, endOfMonth, eachMonthOfInterval, parseISO, addMonths } from 'date-fns'
 import { FamilyMember, BudgetItem } from '@/types'
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import DebtSnowballView from './DebtSnowballView'
 
 type BudgetItemInsert = Database['public']['Tables']['budget_items']['Insert']
 
@@ -14,7 +15,7 @@ const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'
 export default function BudgetSection({ familyMembers }: { familyMembers: FamilyMember[] }) {
   const [budgetItems, setBudgetItems] = useState<BudgetItem[]>([])
   const [showForm, setShowForm] = useState(false)
-  const [viewMode, setViewMode] = useState<'list' | 'charts' | 'projections'>('charts')
+  const [viewMode, setViewMode] = useState<'list' | 'charts' | 'projections' | 'debt'>('charts')
   const [formData, setFormData] = useState({
     category: 'Bills',
     description: '',
@@ -292,6 +293,14 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
               }`}
             >
               List
+            </button>
+            <button
+              onClick={() => setViewMode('debt')}
+              className={`px-3 py-1 rounded text-sm transition-colors ${
+                viewMode === 'debt' ? 'bg-red-500 text-white' : 'text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              Debt Snowball
             </button>
           </div>
           <button
@@ -792,6 +801,11 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
                 </div>
               )}
             </>
+          )}
+
+          {/* Debt Snowball View */}
+          {viewMode === 'debt' && (
+            <DebtSnowballView budgetItems={budgetItems} />
           )}
         </div>
       )}
