@@ -17,7 +17,10 @@ export default function AppointmentsSection({ familyMembers }: { familyMembers: 
     family_member_id: familyMembers[0]?.id || '',
     appointment_date: '',
     appointment_time: '',
-    location: ''
+    location: '',
+    phone_number: '',
+    sms_enabled: false,
+    sms_days_before: 1
   })
 
   useEffect(() => {
@@ -55,6 +58,9 @@ export default function AppointmentsSection({ familyMembers }: { familyMembers: 
       appointment_date: formData.appointment_date,
       appointment_time: formData.appointment_time,
       location: formData.location || undefined,
+      phone_number: formData.sms_enabled && formData.phone_number ? formData.phone_number : null,
+      sms_enabled: formData.sms_enabled,
+      sms_days_before: formData.sms_enabled ? formData.sms_days_before : 1,
     }
 
     const { error } = await supabase
@@ -74,7 +80,10 @@ export default function AppointmentsSection({ familyMembers }: { familyMembers: 
       family_member_id: familyMembers[0]?.id || '',
       appointment_date: '',
       appointment_time: '',
-      location: ''
+      location: '',
+      phone_number: '',
+      sms_enabled: false,
+      sms_days_before: 1
     })
     setShowForm(false)
     loadAppointments()
@@ -208,6 +217,45 @@ export default function AppointmentsSection({ familyMembers }: { familyMembers: 
                 rows={2}
               />
             </div>
+            <div className="md:col-span-2">
+              <label className="flex items-center gap-2 mb-2">
+                <input
+                  type="checkbox"
+                  checked={formData.sms_enabled}
+                  onChange={(e) => setFormData({ ...formData, sms_enabled: e.target.checked })}
+                  className="w-4 h-4"
+                />
+                <span className="text-sm font-medium text-gray-700">Enable SMS Reminder</span>
+              </label>
+            </div>
+            {formData.sms_enabled && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                  <input
+                    type="tel"
+                    value={formData.phone_number}
+                    onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="+1234567890"
+                    required={formData.sms_enabled}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Send Reminder (Days Before)</label>
+                  <select
+                    value={formData.sms_days_before}
+                    onChange={(e) => setFormData({ ...formData, sms_days_before: parseInt(e.target.value) })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value={1}>1 day before</option>
+                    <option value={2}>2 days before</option>
+                    <option value={3}>3 days before</option>
+                    <option value={7}>1 week before</option>
+                  </select>
+                </div>
+              </>
+            )}
           </div>
           <div className="flex gap-2 mt-4">
             <button

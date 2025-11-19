@@ -95,7 +95,7 @@ export default function Home() {
           {activeTab === 'budget' && <BudgetSection familyMembers={familyMembers} />}
           {activeTab === 'chores' && <ChoresSection familyMembers={familyMembers} />}
           {activeTab === 'appointments' && <AppointmentsSection familyMembers={familyMembers} />}
-          {activeTab === 'family' && <FamilyEditor />}
+          {activeTab === 'family' && <FamilyEditor onUpdate={loadFamilyMembers} />}
         </div>
       </div>
     </main>

@@ -1,16 +1,18 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { supabase, Database } from '@/lib/supabase'
-import { Plus, Trash2, Check, Repeat } from 'lucide-react'
+import { Plus, Trash2, Check, Repeat, BarChart3 } from 'lucide-react'
 import { format } from 'date-fns'
 import { FamilyMember, Chore } from '@/types'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 
 type ChoreInsert = Database['public']['Tables']['chores']['Insert']
 
 export default function ChoresSection({ familyMembers }: { familyMembers: FamilyMember[] }) {
   const [chores, setChores] = useState<Chore[]>([])
   const [showForm, setShowForm] = useState(false)
+  const [viewMode, setViewMode] = useState<'list' | 'chart'>('list')
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -109,6 +111,23 @@ export default function ChoresSection({ familyMembers }: { familyMembers: Family
   const completedCount = chores.filter(c => c.completed).length
   const totalCount = chores.length
 
+  // Chart data by person
+  const chartData = useMemo(() => {
+    const memberStats = familyMembers.map(member => {
+      const memberChores = chores.filter(c => c.assigned_to === member.id)
+      const completed = memberChores.filter(c => c.completed).length
+      const total = memberChores.length
+      return {
+        name: member.name,
+        completed,
+        pending: total - completed,
+        total,
+        color: member.avatar_color
+      }
+    })
+    return memberStats.filter(stat => stat.total > 0)
+  }, [chores, familyMembers])
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
@@ -118,13 +137,34 @@ export default function ChoresSection({ familyMembers }: { familyMembers: Family
             {completedCount} of {totalCount} completed
           </p>
         </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Add Chore
-        </button>
+        <div className="flex gap-2">
+          <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`px-3 py-1 rounded text-sm transition-colors ${
+                viewMode === 'list' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              List
+            </button>
+            <button
+              onClick={() => setViewMode('chart')}
+              className={`px-3 py-1 rounded text-sm transition-colors ${
+                viewMode === 'chart' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              <BarChart3 className="w-4 h-4 inline mr-1" />
+              Chart
+            </button>
+          </div>
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Add Chore
+          </button>
+        </div>
       </div>
 
       {/* Progress Bar */}
@@ -219,7 +259,61 @@ export default function ChoresSection({ familyMembers }: { familyMembers: Family
         </form>
       )}
 
+      {/* Chart View */}
+      {viewMode === 'chart' && (
+        <div className="space-y-6 mb-6">
+          <div className="bg-white p-4 rounded-lg border border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Chores by Person</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="completed" fill="#10B981" name="Completed" />
+                <Bar dataKey="pending" fill="#EF4444" name="Pending" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="bg-white p-4 rounded-lg border border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Completion Rate by Person</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {chartData.map((member, index) => {
+                const percentage = member.total > 0 ? (member.completed / member.total) * 100 : 0
+                return (
+                  <div key={index} className="p-4 border border-gray-200 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white"
+                          style={{ backgroundColor: member.color }}
+                        >
+                          {member.name.charAt(0)}
+                        </div>
+                        <span className="font-semibold">{member.name}</span>
+                      </div>
+                      <span className="text-sm text-gray-600">{percentage.toFixed(0)}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-4">
+                      <div
+                        className="bg-blue-500 h-4 rounded-full transition-all"
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
+                    <div className="text-xs text-gray-500 mt-2">
+                      {member.completed} of {member.total} completed
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Chores List */}
+      {viewMode === 'list' && (
       <div className="space-y-3">
         {chores.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
@@ -288,6 +382,7 @@ export default function ChoresSection({ familyMembers }: { familyMembers: Family
           })
         )}
       </div>
+      )}
     </div>
   )
 }

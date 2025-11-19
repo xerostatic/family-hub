@@ -48,6 +48,8 @@ export type Database = {
           family_member_id: string
           is_income: boolean
           recurrence: string | null
+          payday_date: string | null
+          pay_frequency: string | null
           created_at: string
         }
         Insert: {
@@ -60,6 +62,8 @@ export type Database = {
           family_member_id: string
           is_income?: boolean
           recurrence?: string | null
+          payday_date?: string | null
+          pay_frequency?: string | null
           created_at?: string
         }
         Update: {
@@ -72,6 +76,8 @@ export type Database = {
           family_member_id?: string
           is_income?: boolean
           recurrence?: string | null
+          payday_date?: string | null
+          pay_frequency?: string | null
           created_at?: string
         }
       }
@@ -117,6 +123,9 @@ export type Database = {
           appointment_time: string
           location: string
           reminder_sent: boolean
+          phone_number: string | null
+          sms_days_before: number
+          sms_enabled: boolean
           created_at: string
         }
         Insert: {
@@ -128,6 +137,9 @@ export type Database = {
           appointment_time: string
           location?: string
           reminder_sent?: boolean
+          phone_number?: string | null
+          sms_days_before?: number
+          sms_enabled?: boolean
           created_at?: string
         }
         Update: {
@@ -139,6 +151,9 @@ export type Database = {
           appointment_time?: string
           location?: string
           reminder_sent?: boolean
+          phone_number?: string | null
+          sms_days_before?: number
+          sms_enabled?: boolean
           created_at?: string
         }
       }

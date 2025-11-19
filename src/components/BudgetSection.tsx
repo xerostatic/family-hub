@@ -22,7 +22,9 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
     due_date: '',
     family_member_id: familyMembers[0]?.id || '',
     is_income: false,
-    recurrence: 'none'
+    recurrence: 'none',
+    payday_date: '',
+    pay_frequency: 'monthly'
   })
 
   useEffect(() => {
@@ -60,6 +62,8 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
       family_member_id: String(formData.family_member_id),
       is_income: formData.is_income,
       recurrence: formData.recurrence === 'none' ? null : formData.recurrence,
+      payday_date: formData.is_income && formData.payday_date ? formData.payday_date : null,
+      pay_frequency: formData.is_income && formData.pay_frequency ? formData.pay_frequency : null,
     }
 
     const { error } = await supabase
@@ -80,7 +84,9 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
       due_date: '',
       family_member_id: familyMembers[0]?.id || '',
       is_income: false,
-      recurrence: 'none'
+      recurrence: 'none',
+      payday_date: '',
+      pay_frequency: 'monthly'
     })
     setShowForm(false)
     loadBudgetItems()
@@ -152,10 +158,29 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
 
       // Calculate recurring items
       const recurringExpenses = expenses.filter(item => item.recurrence === 'monthly')
-      const recurringIncome = income.filter(item => item.recurrence === 'monthly')
+      const recurringIncome = income.filter(item => item.recurrence === 'monthly' || item.recurrence === 'biweekly')
+      
+      // Calculate bi-weekly income for this month
+      const biweeklyIncome = income.filter(item => item.recurrence === 'biweekly' || item.pay_frequency === 'biweekly')
+      let biweeklyIncomeTotal = 0
+      biweeklyIncome.forEach(item => {
+        if (item.payday_date) {
+          const paydayDate = parseISO(item.payday_date)
+          // Calculate paydays in this month (every 2 weeks)
+          let currentPayday = new Date(paydayDate)
+          let paydaysInMonth = 0
+          while (currentPayday <= monthEnd) {
+            if (currentPayday >= monthStart && currentPayday <= monthEnd) {
+              paydaysInMonth++
+            }
+            currentPayday = new Date(currentPayday.getTime() + 14 * 24 * 60 * 60 * 1000) // Add 14 days
+          }
+          biweeklyIncomeTotal += parseFloat(item.amount.toString()) * paydaysInMonth
+        }
+      })
 
       const recurringExpenseTotal = recurringExpenses.reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0)
-      const recurringIncomeTotal = recurringIncome.reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0)
+      const recurringIncomeTotal = recurringIncome.filter(item => item.recurrence === 'monthly').reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0) + biweeklyIncomeTotal
 
       return {
         month: monthKey,
@@ -194,13 +219,32 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
     })
 
     const recurringExpenses = expenses.filter(item => item.recurrence === 'monthly')
-    const recurringIncome = income.filter(item => item.recurrence === 'monthly')
+    const recurringIncome = income.filter(item => item.recurrence === 'monthly' || item.recurrence === 'biweekly')
+    
+    // Calculate bi-weekly income for current month
+    const biweeklyIncome = income.filter(item => item.recurrence === 'biweekly' || item.pay_frequency === 'biweekly')
+    let biweeklyIncomeTotal = 0
+    biweeklyIncome.forEach(item => {
+      if (item.payday_date) {
+        const paydayDate = parseISO(item.payday_date)
+        let currentPayday = new Date(paydayDate)
+        let paydaysInMonth = 0
+        while (currentPayday <= monthEnd) {
+          if (currentPayday >= monthStart && currentPayday <= monthEnd) {
+            paydaysInMonth++
+          }
+          currentPayday = new Date(currentPayday.getTime() + 14 * 24 * 60 * 60 * 1000)
+        }
+        biweeklyIncomeTotal += parseFloat(item.amount.toString()) * paydaysInMonth
+      }
+    })
 
     return {
       expenses: monthExpenses.reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0) + 
                 recurringExpenses.reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0),
       income: monthIncome.reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0) + 
-              recurringIncome.reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0),
+              recurringIncome.filter(item => item.recurrence === 'monthly').reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0) +
+              biweeklyIncomeTotal,
       paid: monthExpenses.filter(item => item.paid).reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0) +
             recurringExpenses.filter(item => item.paid).reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0)
     }
@@ -351,28 +395,72 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
                 required
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
-              <input
-                type="date"
-                value={formData.due_date}
-                onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Recurrence</label>
-              <select
-                value={formData.recurrence}
-                onChange={(e) => setFormData({ ...formData, recurrence: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="none">One-time</option>
-                <option value="monthly">Monthly</option>
-                <option value="yearly">Yearly</option>
-              </select>
-            </div>
+            {!formData.is_income && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+                <input
+                  type="date"
+                  value={formData.due_date}
+                  onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+            )}
+            {formData.is_income && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                <input
+                  type="date"
+                  value={formData.due_date}
+                  onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+            )}
+            {!formData.is_income && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Recurrence</label>
+                <select
+                  value={formData.recurrence}
+                  onChange={(e) => setFormData({ ...formData, recurrence: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="none">One-time</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </div>
+            )}
+            {formData.is_income && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Payday Date</label>
+                  <input
+                    type="date"
+                    value={formData.payday_date}
+                    onChange={(e) => setFormData({ ...formData, payday_date: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Pay Frequency</label>
+                  <select
+                    value={formData.pay_frequency}
+                    onChange={(e) => setFormData({ ...formData, pay_frequency: e.target.value, recurrence: e.target.value === 'biweekly' ? 'biweekly' : e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  >
+                    <option value="weekly">Weekly</option>
+                    <option value="biweekly">Bi-weekly (Every 2 weeks)</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="yearly">Yearly</option>
+                  </select>
+                </div>
+              </>
+            )}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Assigned To</label>
               <select
