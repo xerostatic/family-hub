@@ -73,7 +73,8 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
     
     if (error) {
       console.error('Error creating budget item:', error)
-      alert('Failed to create budget item. Please try again.')
+      console.error('Error details:', JSON.stringify(error, null, 2))
+      alert(`Failed to create budget item: ${error.message || 'Unknown error'}. Make sure you've run the database migration!`)
       return
     }
     
