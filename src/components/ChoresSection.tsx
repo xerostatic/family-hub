@@ -164,7 +164,7 @@ export default function ChoresSection({ familyMembers }: { familyMembers: Family
               }`}
             >
               <Sparkles className="w-4 h-4 inline mr-1" />
-              Kids View
+              Active View
             </button>
           </div>
           <button
@@ -190,7 +190,7 @@ export default function ChoresSection({ familyMembers }: { familyMembers: Family
       )}
 
       {/* Add Chore Form */}
-      {showForm && viewMode !== 'kids' && (
+      {showForm && (
         <form onSubmit={handleSubmit} className="bg-gray-50 p-4 rounded-lg mb-6 border border-gray-200">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
