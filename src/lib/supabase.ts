@@ -50,6 +50,8 @@ export type Database = {
           recurrence: string | null
           payday_date: string | null
           pay_frequency: string | null
+          is_debt: boolean
+          outstanding_balance: number | null
           created_at: string
         }
         Insert: {
@@ -64,6 +66,8 @@ export type Database = {
           recurrence?: string | null
           payday_date?: string | null
           pay_frequency?: string | null
+          is_debt?: boolean
+          outstanding_balance?: number | null
           created_at?: string
         }
         Update: {
@@ -78,6 +82,8 @@ export type Database = {
           recurrence?: string | null
           payday_date?: string | null
           pay_frequency?: string | null
+          is_debt?: boolean
+          outstanding_balance?: number | null
           created_at?: string
         }
       }

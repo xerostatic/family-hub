@@ -39,7 +39,12 @@ END $$;
 -- Step 4: Create index for income filtering
 CREATE INDEX IF NOT EXISTS idx_budget_items_is_income ON budget_items(is_income);
 
--- Step 5: Add SMS notification fields to appointments
+-- Step 5: Add debt tracking to budget_items
+ALTER TABLE budget_items
+ADD COLUMN IF NOT EXISTS is_debt BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS outstanding_balance DECIMAL(10, 2);
+
+-- Step 6: Add SMS notification fields to appointments
 ALTER TABLE appointments
 ADD COLUMN IF NOT EXISTS phone_number TEXT,
 ADD COLUMN IF NOT EXISTS sms_days_before INTEGER DEFAULT 1,

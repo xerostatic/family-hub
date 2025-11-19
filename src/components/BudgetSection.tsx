@@ -24,7 +24,9 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
     is_income: false,
     recurrence: 'none',
     payday_date: '',
-    pay_frequency: 'monthly'
+    pay_frequency: 'monthly',
+    is_debt: false,
+    outstanding_balance: ''
   })
 
   useEffect(() => {
@@ -70,6 +72,8 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
         : (formData.recurrence === 'none' ? null : formData.recurrence),
       payday_date: formData.is_income && formData.payday_date ? formData.payday_date : null,
       pay_frequency: formData.is_income && formData.pay_frequency ? formData.pay_frequency : null,
+      is_debt: !formData.is_income && formData.is_debt,
+      outstanding_balance: formData.is_debt && formData.outstanding_balance ? parseFloat(formData.outstanding_balance) : null,
     }
 
     const { error } = await supabase
@@ -93,7 +97,9 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
       is_income: false,
       recurrence: 'none',
       payday_date: '',
-      pay_frequency: 'monthly'
+      pay_frequency: 'monthly',
+      is_debt: false,
+      outstanding_balance: ''
     })
     setShowForm(false)
     loadBudgetItems()
@@ -132,9 +138,11 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
   // Calculate totals
   const expenses = budgetItems.filter(item => !item.is_income)
   const income = budgetItems.filter(item => item.is_income)
+  const debtItems = expenses.filter(item => item.is_debt)
   
   const totalExpenses = expenses.reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0)
   const totalIncome = income.reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0)
+  const totalDebt = debtItems.reduce((sum, item) => sum + (item.outstanding_balance ? parseFloat(item.outstanding_balance.toString()) : 0), 0)
   const netAmount = totalIncome - totalExpenses
   
   const paidExpenses = expenses.filter(item => item.paid).reduce((sum, item) => sum + parseFloat(item.amount.toString()), 0)
@@ -304,7 +312,7 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-6">
         <div className="bg-green-50 p-4 rounded-lg border border-green-200">
           <div className="flex items-center gap-2 text-sm text-green-600 mb-1">
             <TrendingUp className="w-4 h-4" />
@@ -319,6 +327,15 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
           </div>
           <div className="text-2xl font-bold text-red-700">${totalExpenses.toFixed(2)}</div>
         </div>
+        {totalDebt > 0 && (
+          <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+            <div className="flex items-center gap-2 text-sm text-orange-600 mb-1">
+              <DollarSign className="w-4 h-4" />
+              Total Debt
+            </div>
+            <div className="text-2xl font-bold text-orange-700">${totalDebt.toFixed(2)}</div>
+          </div>
+        )}
         <div className={`p-4 rounded-lg border ${
           netAmount >= 0 
             ? 'bg-blue-50 border-blue-200' 
@@ -427,18 +444,45 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
               </div>
             )}
             {!formData.is_income && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Recurrence</label>
-                <select
-                  value={formData.recurrence}
-                  onChange={(e) => setFormData({ ...formData, recurrence: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="none">One-time</option>
-                  <option value="monthly">Monthly</option>
-                  <option value="yearly">Yearly</option>
-                </select>
-              </div>
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Recurrence</label>
+                  <select
+                    value={formData.recurrence}
+                    onChange={(e) => setFormData({ ...formData, recurrence: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="none">One-time</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="yearly">Yearly</option>
+                  </select>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.is_debt}
+                      onChange={(e) => setFormData({ ...formData, is_debt: e.target.checked, outstanding_balance: e.target.checked ? formData.outstanding_balance : '' })}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm font-medium text-gray-700">This is debt (credit card, loan, etc.)</span>
+                  </label>
+                </div>
+                {formData.is_debt && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Outstanding Balance</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={formData.outstanding_balance}
+                      onChange={(e) => setFormData({ ...formData, outstanding_balance: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="0.00"
+                      required={formData.is_debt}
+                    />
+                  </div>
+                )}
+              </>
             )}
             {formData.is_income && (
               <>
@@ -724,6 +768,11 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
                                 <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
                                   {item.category}
                                 </span>
+                                {item.is_debt && (
+                                  <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded font-semibold">
+                                    DEBT
+                                  </span>
+                                )}
                                 {item.recurrence && (
                                   <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">
                                     {item.recurrence}
@@ -732,10 +781,22 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
                               </div>
                               <div className="text-sm text-gray-600 mt-1">
                                 Due: {format(new Date(item.due_date), 'MMM d, yyyy')} • {member?.name}
+                                {item.is_debt && item.outstanding_balance && (
+                                  <span className="ml-2 text-red-600 font-semibold">
+                                    • Balance: ${parseFloat(item.outstanding_balance.toString()).toFixed(2)}
+                                  </span>
+                                )}
                               </div>
                             </div>
-                            <div className={`text-xl font-bold ${item.paid ? 'text-gray-500' : 'text-gray-800'}`}>
-                              ${parseFloat(item.amount.toString()).toFixed(2)}
+                            <div className="text-right">
+                              <div className={`text-xl font-bold ${item.paid ? 'text-gray-500' : 'text-gray-800'}`}>
+                                ${parseFloat(item.amount.toString()).toFixed(2)}
+                              </div>
+                              {item.is_debt && item.outstanding_balance && (
+                                <div className="text-sm text-red-600 font-semibold">
+                                  Owed: ${parseFloat(item.outstanding_balance.toString()).toFixed(2)}
+                                </div>
+                              )}
                             </div>
                           </div>
                           <button
