@@ -107,3 +107,14 @@ EXCEPTION
         NULL;
 END $$;
 
+-- Step 11: Make family_member_id nullable in budget_items table (no longer assigning to specific members)
+DO $$
+BEGIN
+    -- Drop NOT NULL constraint if it exists
+    ALTER TABLE budget_items ALTER COLUMN family_member_id DROP NOT NULL;
+EXCEPTION
+    WHEN OTHERS THEN
+        -- If constraint doesn't exist, that's fine
+        NULL;
+END $$;
+

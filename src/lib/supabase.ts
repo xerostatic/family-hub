@@ -45,7 +45,7 @@ export type Database = {
           amount: number
           due_date: string
           paid: boolean
-          family_member_id: string
+          family_member_id: string | null
           is_income: boolean
           recurrence: string | null
           payday_date: string | null
@@ -61,7 +61,7 @@ export type Database = {
           amount: number
           due_date: string
           paid?: boolean
-          family_member_id: string
+          family_member_id?: string | null
           is_income?: boolean
           recurrence?: string | null
           payday_date?: string | null
@@ -77,7 +77,7 @@ export type Database = {
           amount?: number
           due_date?: string
           paid?: boolean
-          family_member_id?: string
+          family_member_id?: string | null
           is_income?: boolean
           recurrence?: string | null
           payday_date?: string | null

@@ -20,7 +20,6 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
     description: '',
     amount: '',
     due_date: '',
-    family_member_id: familyMembers[0]?.id || '',
     is_income: false,
     recurrence: 'none',
     payday_date: '',
@@ -33,11 +32,6 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
     loadBudgetItems()
   }, [])
 
-  useEffect(() => {
-    if (familyMembers.length > 0 && !formData.family_member_id) {
-      setFormData(prev => ({ ...prev, family_member_id: familyMembers[0].id }))
-    }
-  }, [familyMembers])
 
   const loadBudgetItems = async () => {
     const { data, error } = await supabase
@@ -61,7 +55,7 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
       description: formData.description,
       amount: parseFloat(formData.amount),
       due_date: formData.due_date,
-      family_member_id: String(formData.family_member_id),
+      family_member_id: null, // No longer assigning to specific members
       is_income: formData.is_income,
       // For income items, use pay_frequency to determine recurrence
       // For expenses, use the recurrence field directly
@@ -93,7 +87,6 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
       description: '',
       amount: '',
       due_date: '',
-      family_member_id: familyMembers[0]?.id || '',
       is_income: false,
       recurrence: 'none',
       payday_date: '',
@@ -392,6 +385,7 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
                 <option>Gas</option>
                 <option>Entertainment</option>
                 <option>Healthcare</option>
+                <option>Charitable Givings</option>
                 <option>Salary</option>
                 <option>Other</option>
               </select>
@@ -453,6 +447,7 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="none">One-time</option>
+                    <option value="biweekly">Bi-weekly (Every 2 weeks)</option>
                     <option value="monthly">Monthly</option>
                     <option value="yearly">Yearly</option>
                   </select>
@@ -525,19 +520,6 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
                 </div>
               </>
             )}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Assigned To</label>
-              <select
-                value={formData.family_member_id}
-                onChange={(e) => setFormData({ ...formData, family_member_id: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              >
-                {familyMembers.map(member => (
-                  <option key={member.id} value={member.id}>{member.name}</option>
-                ))}
-              </select>
-            </div>
           </div>
           <div className="flex gap-2 mt-4">
             <button
@@ -693,7 +675,6 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
                   <h3 className="text-lg font-semibold text-green-600 mb-3">Income</h3>
                   <div className="space-y-3">
                     {income.map(item => {
-                      const member = familyMembers.find(m => m.id === item.family_member_id)
                       return (
                         <div
                           key={item.id}
@@ -713,7 +694,7 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
                                 )}
                               </div>
                               <div className="text-sm text-gray-600 mt-1">
-                                {format(new Date(item.due_date), 'MMM d, yyyy')} • {member?.name}
+                                {format(new Date(item.due_date), 'MMM d, yyyy')}
                               </div>
                             </div>
                             <div className="text-xl font-bold text-green-600">
@@ -739,7 +720,6 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
                   <h3 className="text-lg font-semibold text-red-600 mb-3">Expenses</h3>
                   <div className="space-y-3">
                     {expenses.map(item => {
-                      const member = familyMembers.find(m => m.id === item.family_member_id)
                       return (
                         <div
                           key={item.id}
@@ -780,7 +760,7 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
                                 )}
                               </div>
                               <div className="text-sm text-gray-600 mt-1">
-                                Due: {format(new Date(item.due_date), 'MMM d, yyyy')} • {member?.name}
+                                Due: {format(new Date(item.due_date), 'MMM d, yyyy')}
                                 {item.is_debt && item.outstanding_balance && (
                                   <span className="ml-2 text-red-600 font-semibold">
                                     • Balance: ${parseFloat(item.outstanding_balance.toString()).toFixed(2)}
