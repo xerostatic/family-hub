@@ -118,3 +118,9 @@ EXCEPTION
         NULL;
 END $$;
 
+-- Step 12: Add debt snowball tracking fields to budget_items table
+ALTER TABLE budget_items
+ADD COLUMN IF NOT EXISTS include_in_snowball BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS interest_rate DECIMAL(5, 2),
+ADD COLUMN IF NOT EXISTS payment_term_months INTEGER;
+

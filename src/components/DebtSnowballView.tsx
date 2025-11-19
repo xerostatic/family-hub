@@ -11,7 +11,8 @@ type DebtItem = {
   name: string
   balance: number
   minPayment: number
-  interestRate?: number
+  interestRate: number
+  paymentTermMonths?: number | null
 }
 
 type PayoffScenario = {
@@ -30,16 +31,22 @@ export default function DebtSnowballView({ budgetItems }: { budgetItems: BudgetI
   const [extraPayment, setExtraPayment] = useState<string>('0')
   const [scenarioType, setScenarioType] = useState<'monthly' | 'yearly'>('monthly')
 
-  // Extract debt items
+  // Extract debt items - only those included in snowball
   const debtItems: DebtItem[] = useMemo(() => {
     return budgetItems
-      .filter(item => item.is_debt && item.outstanding_balance && item.outstanding_balance > 0)
+      .filter(item => 
+        item.is_debt && 
+        item.outstanding_balance && 
+        item.outstanding_balance > 0 &&
+        item.include_in_snowball // Only include items marked for snowball
+      )
       .map(item => ({
         id: item.id,
         name: item.description || item.category,
         balance: parseFloat(item.outstanding_balance!.toString()),
         minPayment: parseFloat(item.amount.toString()),
-        interestRate: 0 // We don't track interest rate, but could add it later
+        interestRate: item.interest_rate ? parseFloat(item.interest_rate.toString()) : 0,
+        paymentTermMonths: item.payment_term_months
       }))
       .sort((a, b) => a.balance - b.balance) // Snowball method: smallest first
   }, [budgetItems])
@@ -72,6 +79,16 @@ export default function DebtSnowballView({ budgetItems }: { budgetItems: BudgetI
       let availablePayment = totalMinPayments + extraPerMonth
       let monthBalance = 0
       let monthPayment = 0
+
+      // Apply interest first (monthly interest rate)
+      for (const debt of debts) {
+        if (debt.balance <= 0) continue
+        if (debt.interestRate > 0) {
+          const monthlyInterest = (debt.balance * debt.interestRate / 100) / 12
+          debt.balance += monthlyInterest
+          totalInterest += monthlyInterest
+        }
+      }
 
       // Pay off debts in order (snowball method)
       for (const debt of debts) {
@@ -115,9 +132,21 @@ export default function DebtSnowballView({ budgetItems }: { budgetItems: BudgetI
     const debts = debtItems.map(d => ({ ...d }))
     let month = 0
     let totalPaid = 0
+    let baselineInterest = 0
 
     while (debts.some(d => d.balance > 0.01)) {
       month++
+      
+      // Apply interest first
+      for (const debt of debts) {
+        if (debt.balance <= 0) continue
+        if (debt.interestRate > 0) {
+          const monthlyInterest = (debt.balance * debt.interestRate / 100) / 12
+          debt.balance += monthlyInterest
+          baselineInterest += monthlyInterest
+        }
+      }
+      
       let availablePayment = totalMinPayments
 
       for (const debt of debts) {
@@ -139,7 +168,7 @@ export default function DebtSnowballView({ budgetItems }: { budgetItems: BudgetI
     return {
       months: month,
       totalPaid,
-      totalInterest: 0,
+      totalInterest: baselineInterest,
       payoffDate: addMonths(new Date(), month),
       timeline: []
     }
@@ -273,7 +302,19 @@ export default function DebtSnowballView({ budgetItems }: { budgetItems: BudgetI
                     </div>
                     <div>
                       <div className="font-semibold text-gray-800">{debt.name}</div>
-                      <div className="text-sm text-gray-600">Min. Payment: ${debt.minPayment.toFixed(2)}/mo</div>
+                      <div className="text-sm text-gray-600">
+                        Min. Payment: ${debt.minPayment.toFixed(2)}/mo
+                        {debt.interestRate > 0 && (
+                          <span className="ml-2 text-orange-600 font-semibold">
+                            • Interest: {debt.interestRate.toFixed(2)}%
+                          </span>
+                        )}
+                        {debt.paymentTermMonths && (
+                          <span className="ml-2 text-blue-600">
+                            • Term: {debt.paymentTermMonths} months
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="text-right">

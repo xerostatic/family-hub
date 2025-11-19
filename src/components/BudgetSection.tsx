@@ -26,7 +26,10 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
     payday_date: '',
     pay_frequency: 'monthly',
     is_debt: false,
-    outstanding_balance: ''
+    outstanding_balance: '',
+    include_in_snowball: false,
+    interest_rate: '',
+    payment_term_months: ''
   })
 
   useEffect(() => {
@@ -69,6 +72,9 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
       pay_frequency: formData.is_income && formData.pay_frequency ? formData.pay_frequency : null,
       is_debt: !formData.is_income && formData.is_debt,
       outstanding_balance: formData.is_debt && formData.outstanding_balance ? parseFloat(formData.outstanding_balance) : null,
+      include_in_snowball: formData.is_debt && formData.include_in_snowball,
+      interest_rate: formData.is_debt && formData.interest_rate ? parseFloat(formData.interest_rate) : null,
+      payment_term_months: formData.is_debt && formData.payment_term_months ? parseInt(formData.payment_term_months) : null,
     }
 
     const { error } = await supabase
@@ -93,7 +99,10 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
       payday_date: '',
       pay_frequency: 'monthly',
       is_debt: false,
-      outstanding_balance: ''
+      outstanding_balance: '',
+      include_in_snowball: false,
+      interest_rate: '',
+      payment_term_months: ''
     })
     setShowForm(false)
     loadBudgetItems()
@@ -473,18 +482,53 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
                   </label>
                 </div>
                 {formData.is_debt && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Outstanding Balance</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={formData.outstanding_balance}
-                      onChange={(e) => setFormData({ ...formData, outstanding_balance: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="0.00"
-                      required={formData.is_debt}
-                    />
-                  </div>
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Outstanding Balance</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={formData.outstanding_balance}
+                        onChange={(e) => setFormData({ ...formData, outstanding_balance: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="0.00"
+                        required={formData.is_debt}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Interest Rate (%)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={formData.interest_rate}
+                        onChange={(e) => setFormData({ ...formData, interest_rate: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Payment Term (Months)</label>
+                      <input
+                        type="number"
+                        step="1"
+                        value={formData.payment_term_months}
+                        onChange={(e) => setFormData({ ...formData, payment_term_months: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="60"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={formData.include_in_snowball}
+                          onChange={(e) => setFormData({ ...formData, include_in_snowball: e.target.checked })}
+                          className="w-4 h-4"
+                        />
+                        <span className="text-sm font-medium text-gray-700">Include in Debt Snowball Calculation</span>
+                      </label>
+                    </div>
+                  </>
                 )}
               </>
             )}
@@ -771,11 +815,42 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
                               <div className="text-sm text-gray-600 mt-1">
                                 Due: {format(new Date(item.due_date), 'MMM d, yyyy')}
                                 {item.is_debt && item.outstanding_balance && (
-                                  <span className="ml-2 text-red-600 font-semibold">
-                                    • Balance: ${parseFloat(item.outstanding_balance.toString()).toFixed(2)}
-                                  </span>
+                                  <>
+                                    <span className="ml-2 text-red-600 font-semibold">
+                                      • Balance: ${parseFloat(item.outstanding_balance.toString()).toFixed(2)}
+                                    </span>
+                                    {item.interest_rate && (
+                                      <span className="ml-2 text-orange-600">
+                                        • Interest: {item.interest_rate}%
+                                      </span>
+                                    )}
+                                  </>
                                 )}
                               </div>
+                              {item.is_debt && (
+                                <div className="mt-2">
+                                  <label className="flex items-center gap-2 text-sm">
+                                    <input
+                                      type="checkbox"
+                                      checked={item.include_in_snowball || false}
+                                      onChange={async (e) => {
+                                        const { error } = await supabase
+                                          .from('budget_items')
+                                          // @ts-expect-error - Supabase type inference issue
+                                          .update({ include_in_snowball: e.target.checked })
+                                          .eq('id', item.id)
+                                        if (error) {
+                                          console.error('Error updating snowball inclusion:', error)
+                                          return
+                                        }
+                                        loadBudgetItems()
+                                      }}
+                                      className="w-4 h-4"
+                                    />
+                                    <span className="text-gray-600">Include in Debt Snowball</span>
+                                  </label>
+                                </div>
+                              )}
                             </div>
                             <div className="text-right">
                               <div className={`text-xl font-bold ${item.paid ? 'text-gray-500' : 'text-gray-800'}`}>

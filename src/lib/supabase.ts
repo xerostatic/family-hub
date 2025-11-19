@@ -52,6 +52,9 @@ export type Database = {
           pay_frequency: string | null
           is_debt: boolean
           outstanding_balance: number | null
+          include_in_snowball: boolean
+          interest_rate: number | null
+          payment_term_months: number | null
           created_at: string
         }
         Insert: {
@@ -68,6 +71,9 @@ export type Database = {
           pay_frequency?: string | null
           is_debt?: boolean
           outstanding_balance?: number | null
+          include_in_snowball?: boolean
+          interest_rate?: number | null
+          payment_term_months?: number | null
           created_at?: string
         }
         Update: {
@@ -84,6 +90,9 @@ export type Database = {
           pay_frequency?: string | null
           is_debt?: boolean
           outstanding_balance?: number | null
+          include_in_snowball?: boolean
+          interest_rate?: number | null
+          payment_term_months?: number | null
           created_at?: string
         }
       }
