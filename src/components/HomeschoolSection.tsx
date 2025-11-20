@@ -104,6 +104,7 @@ export default function HomeschoolSection({ familyMembers }: { familyMembers: Fa
       const insertData: ActivityInsert = activityData
       const { error } = await supabase
         .from('homeschool_activities')
+        // @ts-expect-error - Supabase type inference issue
         .insert([insertData])
       
       if (error) {
@@ -146,6 +147,7 @@ export default function HomeschoolSection({ familyMembers }: { familyMembers: Fa
       const insertData: SubjectInsert = subjectData
       const { error } = await supabase
         .from('homeschool_subjects')
+        // @ts-expect-error - Supabase type inference issue
         .insert([insertData])
       
       if (error) {
