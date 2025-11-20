@@ -18,7 +18,9 @@ type RefinancingScenario = {
 }
 
 export default function RefinancingCalculator({ budgetItems }: { budgetItems: BudgetItem[] }) {
-  const [step, setStep] = useState(1)
+  const [step, setStep] = useState(0)
+  const [useBudgetDebt, setUseBudgetDebt] = useState(false)
+  const [selectedBudgetDebtId, setSelectedBudgetDebtId] = useState<string | null>(null)
   const [interviewData, setInterviewData] = useState({
     currentInterestRate: '',
     newInterestRate: '',
@@ -87,7 +89,26 @@ export default function RefinancingCalculator({ budgetItems }: { budgetItems: Bu
   const scenario = useMemo(() => calculateScenario(), [interviewData])
 
   const handleNext = () => {
-    if (step < 5) {
+    if (step === 0) {
+      // If using budget debt, auto-fill and skip to step 3
+      if (useBudgetDebt && selectedBudgetDebtId) {
+        const selectedDebt = debtItems.find(d => d.id === selectedBudgetDebtId)
+        if (selectedDebt) {
+          setInterviewData({
+            ...interviewData,
+            currentBalance: selectedDebt.outstanding_balance?.toString() || '',
+            currentPayment: selectedDebt.amount.toString(),
+            currentInterestRate: selectedDebt.interest_rate?.toString() || '',
+            debtType: selectedDebt.description.toLowerCase().includes('credit') ? 'credit_card' :
+                     selectedDebt.description.toLowerCase().includes('auto') ? 'auto_loan' :
+                     selectedDebt.description.toLowerCase().includes('mortgage') ? 'mortgage' : 'personal_loan'
+          })
+          setStep(4) // Skip to credit score step
+          return
+        }
+      }
+      setStep(1)
+    } else if (step < 5) {
       setStep(step + 1)
     } else {
       setShowResults(true)
@@ -95,13 +116,15 @@ export default function RefinancingCalculator({ budgetItems }: { budgetItems: Bu
   }
 
   const handleBack = () => {
-    if (step > 1) {
+    if (step > 0) {
       setStep(step - 1)
     }
   }
 
   const resetInterview = () => {
-    setStep(1)
+    setStep(0)
+    setUseBudgetDebt(false)
+    setSelectedBudgetDebtId(null)
     setInterviewData({
       currentInterestRate: '',
       newInterestRate: '',
@@ -277,19 +300,90 @@ export default function RefinancingCalculator({ budgetItems }: { budgetItems: Bu
       {/* Progress Bar */}
       <div className="bg-white rounded-xl p-4 border-2 border-gray-200">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-gray-700">Step {step} of 5</span>
-          <span className="text-sm text-gray-500">{Math.round((step / 5) * 100)}%</span>
+          <span className="text-sm font-medium text-gray-700">
+            {step === 0 ? 'Getting Started' : `Step ${step} of 5`}
+          </span>
+          <span className="text-sm text-gray-500">
+            {step === 0 ? '0%' : `${Math.round((step / 5) * 100)}%`}
+          </span>
         </div>
         <div className="w-full bg-gray-200 rounded-full h-2">
           <div 
             className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-            style={{ width: `${(step / 5) * 100}%` }}
+            style={{ width: `${step === 0 ? 0 : (step / 5) * 100}%` }}
           />
         </div>
       </div>
 
       {/* Interview Steps */}
       <div className="bg-white rounded-xl p-6 border-2 border-gray-200 shadow-lg">
+        {step === 0 && (
+          <div className="space-y-4">
+            <h3 className="text-xl font-bold text-gray-800 mb-4">Do you want to use a debt from your budget section?</h3>
+            {debtItems.length > 0 ? (
+              <>
+                <button
+                  onClick={() => setUseBudgetDebt(true)}
+                  className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
+                    useBudgetDebt
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="font-semibold text-gray-800">Yes, use a debt from budget section</div>
+                  <div className="text-sm text-gray-600 mt-1">
+                    {debtItems.length} debt(s) available
+                  </div>
+                </button>
+                {useBudgetDebt && (
+                  <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <p className="text-sm text-blue-800 mb-3 font-medium">Select a debt to refinance:</p>
+                    <div className="space-y-2">
+                      {debtItems.map(item => (
+                        <button
+                          key={item.id}
+                          onClick={() => setSelectedBudgetDebtId(item.id)}
+                          className={`w-full text-left p-3 rounded border-2 transition-all ${
+                            selectedBudgetDebtId === item.id
+                              ? 'border-blue-500 bg-blue-100'
+                              : 'border-gray-200 hover:border-gray-300 bg-white'
+                          }`}
+                        >
+                          <div className="font-semibold text-gray-800">{item.description}</div>
+                          <div className="text-sm text-gray-600">
+                            Balance: ${item.outstanding_balance?.toFixed(2)} | 
+                            Payment: ${item.amount.toFixed(2)}/mo
+                            {item.interest_rate && ` | Interest: ${item.interest_rate}%`}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <button
+                  onClick={() => {
+                    setUseBudgetDebt(false)
+                    setSelectedBudgetDebtId(null)
+                  }}
+                  className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
+                    !useBudgetDebt
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="font-semibold text-gray-800">No, I'll enter the details manually</div>
+                </button>
+              </>
+            ) : (
+              <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <p className="text-gray-600 text-center">
+                  No debts found in your budget section. You'll enter the details manually.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         {step === 1 && (
           <div className="space-y-4">
             <h3 className="text-xl font-bold text-gray-800 mb-4">What type of debt are you considering refinancing?</h3>
@@ -324,9 +418,9 @@ export default function RefinancingCalculator({ budgetItems }: { budgetItems: Bu
               className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
               placeholder="0.00"
             />
-            {debtItems.length > 0 && (
+            {debtItems.length > 0 && !useBudgetDebt && (
               <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <p className="text-sm text-blue-800 mb-2">Quick select from your debts:</p>
+                <p className="text-sm text-blue-800 mb-2 font-medium">💡 Quick select from your budget debts:</p>
                 <div className="space-y-2">
                   {debtItems.map(item => (
                     <button
@@ -335,11 +429,19 @@ export default function RefinancingCalculator({ budgetItems }: { budgetItems: Bu
                         ...interviewData, 
                         currentBalance: item.outstanding_balance?.toString() || '',
                         currentPayment: item.amount.toString(),
-                        currentInterestRate: item.interest_rate?.toString() || ''
+                        currentInterestRate: item.interest_rate?.toString() || '',
+                        debtType: item.description.toLowerCase().includes('credit') ? 'credit_card' :
+                                 item.description.toLowerCase().includes('auto') ? 'auto_loan' :
+                                 item.description.toLowerCase().includes('mortgage') ? 'mortgage' : 'personal_loan'
                       })}
-                      className="w-full text-left p-2 bg-white rounded border border-blue-200 hover:bg-blue-100 text-sm"
+                      className="w-full text-left p-3 bg-white rounded border-2 border-blue-200 hover:border-blue-400 hover:bg-blue-50 transition-all"
                     >
-                      {item.description}: ${item.outstanding_balance?.toFixed(2)} (${item.amount.toFixed(2)}/mo)
+                      <div className="font-semibold text-gray-800">{item.description}</div>
+                      <div className="text-sm text-gray-600">
+                        Balance: ${item.outstanding_balance?.toFixed(2)} | 
+                        Payment: ${item.amount.toFixed(2)}/mo
+                        {item.interest_rate && ` | Interest: ${item.interest_rate}%`}
+                      </div>
                     </button>
                   ))}
                 </div>
@@ -429,9 +531,9 @@ export default function RefinancingCalculator({ budgetItems }: { budgetItems: Bu
         <div className="flex justify-between mt-6">
           <button
             onClick={handleBack}
-            disabled={step === 1}
+            disabled={step === 0}
             className={`px-6 py-2 rounded-lg transition-colors ${
-              step === 1
+              step === 0
                 ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                 : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
             }`}
@@ -441,6 +543,7 @@ export default function RefinancingCalculator({ budgetItems }: { budgetItems: Bu
           <button
             onClick={handleNext}
             disabled={
+              (step === 0 && useBudgetDebt && !selectedBudgetDebtId) ||
               (step === 1 && !interviewData.debtType) ||
               (step === 2 && !interviewData.currentBalance) ||
               (step === 3 && (!interviewData.currentPayment || !interviewData.currentInterestRate)) ||
@@ -449,12 +552,13 @@ export default function RefinancingCalculator({ budgetItems }: { budgetItems: Bu
             }
             className="flex items-center gap-2 px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:bg-gray-300 disabled:text-gray-400 disabled:cursor-not-allowed"
           >
-            {step === 5 ? 'Calculate' : 'Next'}
-            {step < 5 && <ArrowRight className="w-4 h-4" />}
+            {step === 5 ? 'Calculate' : step === 0 ? 'Continue' : 'Next'}
+            {step < 5 && step !== 0 && <ArrowRight className="w-4 h-4" />}
           </button>
         </div>
       </div>
     </div>
   )
 }
+
 

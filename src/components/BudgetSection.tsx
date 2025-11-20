@@ -964,6 +964,16 @@ export default function BudgetSection({ familyMembers }: { familyMembers: Family
       {viewMode === 'debt' && (
         <DebtSnowballView budgetItems={budgetItems} />
       )}
+
+      {/* Debt Impact Analysis View */}
+      {viewMode === 'debt-impact' && (
+        <DebtImpactAnalysis budgetItems={budgetItems} />
+      )}
+
+      {/* Refinancing Calculator View */}
+      {viewMode === 'refinance' && (
+        <RefinancingCalculator budgetItems={budgetItems} />
+      )}
     </div>
   )
 }

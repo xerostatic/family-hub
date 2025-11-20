@@ -6,11 +6,12 @@ import BudgetSection from '@/components/BudgetSection'
 import ChoresSection from '@/components/ChoresSection'
 import AppointmentsSection from '@/components/AppointmentsSection'
 import FamilyEditor from '@/components/FamilyEditor'
-import { CalendarDays, DollarSign, ListTodo, Users } from 'lucide-react'
+import HomeschoolSection from '@/components/HomeschoolSection'
+import { CalendarDays, DollarSign, ListTodo, Users, BookOpen } from 'lucide-react'
 import { FamilyMember } from '@/types'
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<'budget' | 'chores' | 'appointments' | 'family'>('budget')
+  const [activeTab, setActiveTab] = useState<'budget' | 'chores' | 'appointments' | 'family' | 'homeschool'>('budget')
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([])
 
   useEffect(() => {
@@ -87,6 +88,17 @@ export default function Home() {
               <Users className="w-5 h-5" />
               Family
             </button>
+            <button
+              onClick={() => setActiveTab('homeschool')}
+              className={`flex-1 flex items-center justify-center gap-2 px-6 py-4 font-medium transition-colors ${
+                activeTab === 'homeschool'
+                  ? 'bg-blue-500 text-white border-b-2 border-blue-600'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              <BookOpen className="w-5 h-5" />
+              Homeschool
+            </button>
           </div>
         </div>
 
@@ -96,6 +108,7 @@ export default function Home() {
           {activeTab === 'chores' && <ChoresSection familyMembers={familyMembers} />}
           {activeTab === 'appointments' && <AppointmentsSection familyMembers={familyMembers} />}
           {activeTab === 'family' && <FamilyEditor onUpdate={loadFamilyMembers} />}
+          {activeTab === 'homeschool' && <HomeschoolSection familyMembers={familyMembers} />}
         </div>
       </div>
     </main>

@@ -195,6 +195,73 @@ export type Database = {
           updated_at?: string
         }
       }
+      homeschool_activities: {
+        Row: {
+          id: string
+          student_id: string | null
+          subject: string
+          activity_description: string
+          activity_date: string
+          hours_spent: number
+          completed: boolean
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          student_id?: string | null
+          subject: string
+          activity_description: string
+          activity_date: string
+          hours_spent?: number
+          completed?: boolean
+          notes?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          student_id?: string | null
+          subject?: string
+          activity_description?: string
+          activity_date?: string
+          hours_spent?: number
+          completed?: boolean
+          notes?: string | null
+          created_at?: string
+        }
+      }
+      homeschool_subjects: {
+        Row: {
+          id: string
+          student_id: string | null
+          subject_name: string
+          grade_level: string | null
+          curriculum: string | null
+          hours_per_week: number
+          is_active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          student_id?: string | null
+          subject_name: string
+          grade_level?: string | null
+          curriculum?: string | null
+          hours_per_week?: number
+          is_active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          student_id?: string | null
+          subject_name?: string
+          grade_level?: string | null
+          curriculum?: string | null
+          hours_per_week?: number
+          is_active?: boolean
+          created_at?: string
+        }
+      }
     }
   }
 }
