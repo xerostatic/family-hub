@@ -91,6 +91,7 @@ export default function HomeschoolSection({ familyMembers }: { familyMembers: Fa
       const updateData: ActivityUpdate = activityData
       const { error } = await supabase
         .from('homeschool_activities')
+        // @ts-expect-error - Supabase type inference issue
         .update(updateData)
         .eq('id', editingActivityId)
       
@@ -132,6 +133,7 @@ export default function HomeschoolSection({ familyMembers }: { familyMembers: Fa
       const updateData: SubjectUpdate = subjectData
       const { error } = await supabase
         .from('homeschool_subjects')
+        // @ts-expect-error - Supabase type inference issue
         .update(updateData)
         .eq('id', editingSubjectId)
       
