@@ -252,6 +252,7 @@ export default function HomeschoolSection({ familyMembers }: { familyMembers: Fa
   const toggleActivityCompleted = async (id: string, completed: boolean) => {
     const { error } = await supabase
       .from('homeschool_activities')
+      // @ts-expect-error - Supabase type inference issue
       .update({ completed: !completed })
       .eq('id', id)
     
