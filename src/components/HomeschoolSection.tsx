@@ -10,7 +10,9 @@ type HomeschoolActivity = Database['public']['Tables']['homeschool_activities'][
 type HomeschoolSubject = Database['public']['Tables']['homeschool_subjects']['Row']
 
 type ActivityInsert = Database['public']['Tables']['homeschool_activities']['Insert']
+type ActivityUpdate = Database['public']['Tables']['homeschool_activities']['Update']
 type SubjectInsert = Database['public']['Tables']['homeschool_subjects']['Insert']
+type SubjectUpdate = Database['public']['Tables']['homeschool_subjects']['Update']
 
 export default function HomeschoolSection({ familyMembers }: { familyMembers: FamilyMember[] }) {
   const [activities, setActivities] = useState<HomeschoolActivity[]>([])
@@ -75,7 +77,7 @@ export default function HomeschoolSection({ familyMembers }: { familyMembers: Fa
   const handleActivitySubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    const insertData: ActivityInsert = {
+    const activityData = {
       student_id: activityFormData.student_id || null,
       subject: activityFormData.subject,
       activity_description: activityFormData.activity_description,
@@ -86,9 +88,10 @@ export default function HomeschoolSection({ familyMembers }: { familyMembers: Fa
     }
 
     if (editingActivityId) {
+      const updateData: ActivityUpdate = activityData
       const { error } = await supabase
         .from('homeschool_activities')
-        .update(insertData)
+        .update(updateData)
         .eq('id', editingActivityId)
       
       if (error) {
@@ -97,6 +100,7 @@ export default function HomeschoolSection({ familyMembers }: { familyMembers: Fa
         return
       }
     } else {
+      const insertData: ActivityInsert = activityData
       const { error } = await supabase
         .from('homeschool_activities')
         .insert([insertData])
@@ -115,7 +119,7 @@ export default function HomeschoolSection({ familyMembers }: { familyMembers: Fa
   const handleSubjectSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    const insertData: SubjectInsert = {
+    const subjectData = {
       student_id: subjectFormData.student_id || null,
       subject_name: subjectFormData.subject_name,
       grade_level: subjectFormData.grade_level || null,
@@ -125,9 +129,10 @@ export default function HomeschoolSection({ familyMembers }: { familyMembers: Fa
     }
 
     if (editingSubjectId) {
+      const updateData: SubjectUpdate = subjectData
       const { error } = await supabase
         .from('homeschool_subjects')
-        .update(insertData)
+        .update(updateData)
         .eq('id', editingSubjectId)
       
       if (error) {
@@ -136,6 +141,7 @@ export default function HomeschoolSection({ familyMembers }: { familyMembers: Fa
         return
       }
     } else {
+      const insertData: SubjectInsert = subjectData
       const { error } = await supabase
         .from('homeschool_subjects')
         .insert([insertData])
